@@ -1,0 +1,7 @@
+# JAMIX PRO UG — static site
+User-agent: *
+Allow: /
+Disallow: /404.html
+
+# Add your live domain's sitemap here once the site is published, for example:
+# Sitemap: https://your-domain.example/sitemap.xml

@@ -1,0 +1,22 @@
+# Render Blueprint for JAMIX PRO UG
+# Optional: you can deploy manually from the Render dashboard instead.
+# Static site — no build step, files are published from the repository root.
+services:
+  - type: web
+    name: jamix-pro-ug
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: "."
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /assets/images/*
+        name: Cache-Control
+        value: public, max-age=604800
+      - path: /assets/icons/*
+        name: Cache-Control
+        value: public, max-age=604800

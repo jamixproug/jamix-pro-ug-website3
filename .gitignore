@@ -1,0 +1,41 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets and environment files — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local tooling and dependencies
+node_modules/
+vendor/
+.cache/
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+tmp/
+temp/
+.qa/
+
+# Design source files that should not be published
+*.psd
+*.ai
+*.xcf
+*.sketch
+*.fig
+
+# Archives
+*.zip
+*.rar
+*.7z
