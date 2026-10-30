@@ -223,9 +223,9 @@
           </div>
 
           <div class="form-card" id="booking">
-            <p class="eyebrow" style="color:#7a5a12">Booking enquiry</p>
+            <p class="eyebrow" style="color:#7a5a12">Contact &amp; booking</p>
             <h2>Tell us about the room.</h2>
-            <p class="form-intro">Share what you know now — the gaps can be filled in a quick conversation. Fields marked <span style="color:#7a5a12">*</span> are required.</p>
+            <p class="form-intro">Use this form for a booking request or a general question. Share what you know now — the gaps can be filled in a quick conversation. Fields marked <span style="color:#7a5a12">*</span> are required.</p>
 
             <div class="form-note">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 10.5V17M12 7.4v.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -233,26 +233,26 @@
             </div>
 
             <form id="contact-form" novalidate>
-              <input type="hidden" name="_subject" value="Booking enquiry — JAMIX PRO UG website">
+              <input type="hidden" name="_subject" value="Contact / booking enquiry — JAMIX PRO UG website">
               <noscript>
                 <p class="form-note">JavaScript is switched off, so the review step cannot run. Please email <a href="mailto:jamixproug@gmail.com">jamixproug@gmail.com</a> or message <a href="https://wa.me/256763873852" target="_blank" rel="noopener">+256 763 873 852 on WhatsApp</a> with your event details.</p>
               </noscript>
               <div class="form-grid">
                 <div class="field">
                   <label for="name">Your name <span class="req">*</span></label>
-                  <input type="text" id="name" name="name" autocomplete="name" required aria-describedby="name-error">
+                  <input type="text" id="name" name="name" autocomplete="name" maxlength="80" required aria-describedby="name-error">
                   <p class="field-error" id="name-error" aria-live="polite"></p>
                 </div>
 
                 <div class="field">
                   <label for="email">Email address <span class="req">*</span></label>
-                  <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required aria-describedby="email-error">
+                  <input type="email" id="email" name="email" autocomplete="email" inputmode="email" maxlength="120" required aria-describedby="email-error">
                   <p class="field-error" id="email-error" aria-live="polite"></p>
                 </div>
 
                 <div class="field">
                   <label for="phone">Phone / WhatsApp <span class="optional">(optional)</span></label>
-                  <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="+256 …" aria-describedby="phone-hint phone-error">
+                  <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="32" placeholder="+256 …" aria-describedby="phone-hint phone-error">
                   <p class="field-hint" id="phone-hint">Include the country code if you are outside Uganda.</p>
                   <p class="field-error" id="phone-error" aria-live="polite"></p>
                 </div>
@@ -279,7 +279,7 @@
 
                 <div class="field field--full">
                   <label for="message">About the event <span class="req">*</span></label>
-                  <textarea id="message" name="message" required placeholder="Venue, audience, timings, music direction — and anything you are unsure about." aria-describedby="message-hint message-error"></textarea>
+                  <textarea id="message" name="message" required maxlength="2000" placeholder="Venue, audience, timings, music direction — and anything you are unsure about." aria-describedby="message-hint message-error"></textarea>
                   <p class="field-hint" id="message-hint">At least a sentence or two is enough to start.</p>
                   <p class="field-error" id="message-error" aria-live="polite"></p>
                 </div>

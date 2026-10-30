@@ -560,6 +560,7 @@
     const submitButton = $('button[type="submit"]', form);
     const demoNote = $("#form-demo-note");
     const dateField = $("#event-date");
+    let isSubmitting = false;
 
     if (demoNote && !SITE.formEndpoint) demoNote.textContent = SITE.demoNotice;
     if (dateField) {
@@ -642,6 +643,30 @@
 
     const fieldOrder = ["name", "email", "phone", "type", "date", "message", "consent"];
 
+    // Formspree reports server-side field names; map them to our error slots.
+    const fieldMap = {
+      name: "name",
+      email: "email",
+      phone: "phone",
+      "enquiry-type": "type",
+      "event-date": "date",
+      message: "message",
+      consent: "consent",
+    };
+
+    const applyServerErrors = (data) => {
+      if (!data || !Array.isArray(data.errors)) return false;
+      let matched = false;
+      data.errors.forEach((item) => {
+        const key = item && fieldMap[item.field];
+        if (key) {
+          setError(key, item.message || "Please check this field.");
+          matched = true;
+        }
+      });
+      return matched;
+    };
+
     Object.keys(fields).forEach((name) => {
       const field = fields[name];
       if (!field) return;
@@ -673,6 +698,7 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (isSubmitting) return;
       clearStatus();
       const { values, errors } = validate();
       fieldOrder.forEach((name) => setError(name, errors[name] || ""));
@@ -727,11 +753,18 @@
       }
 
       // A real endpoint is configured — submit it.
+      isSubmitting = true;
+      form.setAttribute("aria-busy", "true");
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.dataset.label = submitButton.innerHTML;
+        submitButton.dataset.label = submitButton.dataset.label || submitButton.innerHTML;
         submitButton.innerHTML = "Sending…";
       }
+
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
+      let serverMatched = false;
+
       try {
         const payload = new FormData(form);
         payload.delete("company");
@@ -739,21 +772,45 @@
           method: "POST",
           headers: { Accept: "application/json" },
           body: payload,
+          signal: controller.signal,
         });
-        if (!response.ok) throw new Error("Request failed with status " + response.status);
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || (data && data.ok === false)) {
+          serverMatched = applyServerErrors(data);
+          throw new Error("Request failed with status " + response.status);
+        }
+
+        fieldOrder.forEach((name) => setError(name, ""));
         showStatus(
           "success",
-          "<h3>Message sent</h3><p>Thank you — your enquiry has reached JAMIX PRO UG. We will reply to the email or phone number you provided.</p>" +
+          "<h3>Enquiry sent</h3><p>Thank you — your enquiry has reached JAMIX PRO UG. We will reply to the email or phone number you provided.</p>" +
             '<div class="form-status__actions"><a class="btn btn-wa" href="https://wa.me/' + SITE.whatsapp + '" target="_blank" rel="noopener">Chat on WhatsApp</a></div>'
         );
         form.reset();
       } catch (error) {
+        const timedOut = error && error.name === "AbortError";
+        let reason =
+          "Your message could not be sent. Please try again, or reach us directly on WhatsApp — it is the fastest route.";
+        if (timedOut) {
+          reason =
+            "The request took too long. Please check your connection and try again, or message us on WhatsApp.";
+        } else if (serverMatched) {
+          reason = "Some details need attention. Please check the highlighted fields and try again.";
+          const firstInvalid = fieldOrder.find(
+            (name) => fields[name] && fields[name].getAttribute("aria-invalid") === "true"
+          );
+          if (firstInvalid) fields[firstInvalid].focus();
+        }
         showStatus(
           "error",
-          "<h3>That did not go through</h3><p>Your message could not be sent. Please try again, or reach us directly on WhatsApp — it is the fastest route.</p>" +
+          "<h3>That did not go through</h3><p>" + reason + "</p>" +
             '<div class="form-status__actions"><a class="btn btn-wa" href="https://wa.me/' + SITE.whatsapp + '" target="_blank" rel="noopener">Open WhatsApp</a><a class="btn btn-ghost" href="mailto:' + SITE.email + '" style="border-color:rgba(6,13,28,.25);color:#0a1428;background:transparent">Email us</a></div>'
         );
       } finally {
+        window.clearTimeout(timeout);
+        isSubmitting = false;
+        form.removeAttribute("aria-busy");
         if (submitButton) {
           submitButton.disabled = false;
           if (submitButton.dataset.label) submitButton.innerHTML = submitButton.dataset.label;

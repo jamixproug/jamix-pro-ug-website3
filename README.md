@@ -99,16 +99,22 @@ jamix-pro-ug-website/
 
 ---
 
-## 4. How the contact form behaves
+## 4. How the contact and booking form behaves
 
-The booking form is live. Valid enquiries are posted to **Formspree** (endpoint `https://formspree.io/f/mdeedvje`) and delivered to `jamixproug@gmail.com`.
+One form on `contact.html` handles both contact messages and booking enquiries (the `#booking` anchor). Valid enquiries are posted to **Formspree** (endpoint `https://formspree.io/f/mdeedvje`) and delivered to `jamixproug@gmail.com`.
+
+The form collects:
+
+- **Required:** name, email, type of enquiry, message and consent to be contacted.
+- **Optional:** phone / WhatsApp number and event date.
 
 When a visitor submits a valid enquiry:
 
 1. The form validates each field in the browser and focuses the first error if something is missing.
 2. The details are sent over HTTPS to Formspree and forwarded to the booking inbox.
-3. A confirmation panel says the message has been sent, with an option to continue on WhatsApp.
-4. If the request fails, an error panel explains that nothing went through and offers WhatsApp or email instead.
+3. The submit button is disabled and shows “Sending…” while the request is in flight; repeat submits are ignored until it finishes.
+4. A confirmation panel says the enquiry has been sent, with an option to continue on WhatsApp.
+5. If the request fails or takes longer than 15 seconds, an error panel explains that nothing went through and offers WhatsApp or email instead. Field-specific errors returned by Formspree are shown under the matching inputs.
 
 A hidden honeypot field quietly stops basic bots, and Formspree applies its own spam filtering. The site itself does not store submissions.
 
