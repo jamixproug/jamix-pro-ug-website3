@@ -10,15 +10,14 @@
      Site configuration
      ----------------------------------------------------------
      FORM_ENDPOINT: Formspree endpoint for the booking form.
-     When set, valid enquiries are posted to Formspree and the
-     visitor sees a sent confirmation. Set it to "" to return to
-     demo mode, where the form prepares the enquiry but clearly
-     tells the visitor it has not been sent.
+     Set this to a confirmed endpoint to enable delivery. While it
+     is empty, the form validates and prepares the enquiry but
+     clearly tells the visitor that nothing was sent.
   ---------------------------------------------------------- */
   const SITE = {
     whatsapp: "256763873852",
     email: "jamixproug@gmail.com",
-    formEndpoint: "https://formspree.io/f/xnqkvnjr",
+    formEndpoint: "",
     demoNotice:
       "Demo mode: this form is not connected to a mailbox yet. You can send the same details on WhatsApp in one tap.",
   };
