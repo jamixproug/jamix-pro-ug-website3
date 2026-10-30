@@ -161,12 +161,12 @@ Set the social preview image (`og:image`) to an absolute URL in each page once y
 
 Each social icon is a plain link. Replace the `href` values in the header drawer, footer and contact page. Current values in the build:
 
-- Instagram — `https://www.instagram.com/jamixproug1/`
+- Instagram — `https://www.instagram.com/jamixprougcr7/`
 - TikTok — `https://www.tiktok.com/@jamixproug1`
-- Facebook — `https://www.facebook.com/jamixdjay`
+- Facebook — `https://www.facebook.com/jamixdeejay`
 - X — `https://x.com/jamixproug`
 - Snapchat — `https://www.snapchat.com/add/jamixproug`
-- YouTube — `https://www.youtube.com/@jamixdjay256`
+- YouTube — `https://www.youtube.com/@jamixproug`
 
 The home page “Listen” card repeats the Instagram, TikTok and YouTube links inside `index.html` (section `#music`). If a handle changes, update it there as well as in the header, footer and contact page.
 
