@@ -2,6 +2,7 @@
 User-agent: *
 Allow: /
 Disallow: /404.html
+Disallow: /admin.html
 
 # Add your live domain's sitemap here once the site is published, for example:
 # Sitemap: https://your-domain.example/sitemap.xml

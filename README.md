@@ -2,7 +2,7 @@
 
 A fast, responsive, multi-page static website for **JAMIX PRO UG**, a music, DJ and lifestyle brand based in Kampala, Uganda.
 
-Built with plain HTML, CSS and vanilla JavaScript. No frameworks, no build step, no third-party dependencies at runtime except Google Fonts.
+Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build step. The public pages load only Google Fonts; the private admin page additionally loads the pinned Supabase JS library from jsDelivr.
 
 ---
 
@@ -17,13 +17,19 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks, no build step,
 | Blog | `blog.html` | Searchable, category-filtered article listing |
 | Article | `article.html` | Single article template driven by `assets/data/posts.js` (`article.html?post=slug`) |
 | Contact | `contact.html` | WhatsApp, email, location, social links and an enquiry form with validation |
+| Drops admin | `admin.html` | Private dashboard to manage the home-page playlist (not linked in navigation, `noindex`) |
 | Not found | `404.html` | Friendly fallback page for broken or old links |
 
 Supporting files:
 
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
-- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, form validation and Formspree submission.
+- `admin.css` — admin-only layout, built on the same tokens.
+- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, form validation and Formspree submission.
+- `admin.js` — Supabase sign-in and playlist management for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
+- `assets/data/supabase.js` — Supabase project URL and public anon key (blank until configured).
+- `supabase/schema.sql` — tables, security rules, storage bucket and seed data for the admin.
+- `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
 - `manifest.webmanifest` — installable web-app metadata.
@@ -68,17 +74,24 @@ jamix-pro-ug-website/
 ├── blog.html
 ├── article.html
 ├── contact.html
+├── admin.html
 ├── 404.html
 ├── style.css
+├── admin.css
 ├── script.js
+├── admin.js
 ├── manifest.webmanifest
 ├── robots.txt
 ├── render.yaml
 ├── .gitignore
 ├── README.md
+├── supabase/
+│   └── schema.sql
 └── assets/
+    ├── audio/            (11 MP3 clips)
     ├── data/
-    │   └── posts.js
+    │   ├── posts.js
+    │   └── supabase.js
     ├── icons/
     │   ├── logo-mark.svg
     │   ├── favicon.svg
@@ -141,7 +154,58 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 
 ---
 
-## 5. Customising the site
+## 5. Drops admin (Supabase)
+
+`admin.html` is a private dashboard for the home-page **Drops & IDs** playlist. It can add a clip (uploading the MP3), rename, reorder, hide and delete clips. Changes appear on the public site within a minute — no code edit or redeploy.
+
+The page is deliberately not linked in the navigation. It is `noindex, nofollow` and disallowed in `robots.txt`. That keeps it out of search results; the real protection is the database rules.
+
+### One-time setup
+
+1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops` table, the `admins` allowlist, the security policies, a public `drops` storage bucket and the 11 existing clips.
+3. Go to **Authentication → Users → Add user**. Use your own email and a strong password, and confirm the user.
+4. Back in **SQL Editor**, run this with your email. It is also at the bottom of `schema.sql`:
+
+   ```sql
+   insert into public.admins (user_id, email)
+   select id, email from auth.users where email = 'you@example.com'
+   on conflict (user_id) do nothing;
+   ```
+
+   Creating a user is not enough on its own — without this row the dashboard refuses the account.
+5. Go to **Project Settings → API** and copy the **Project URL** and the **anon public** key into `assets/data/supabase.js`.
+6. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
+
+Leave both values blank to keep the site exactly as it is today: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
+
+### Using the dashboard
+
+- Sign in at `https://<your-site>/admin.html`.
+- **Add a clip** uploads an MP3 to the `drops` bucket and publishes it at the end of the playlist. MP3 only, 10 MB maximum — clips of 5–15 seconds work best.
+- The arrow buttons change the order, **Rename** edits the title inline, **Hide** removes a clip from the player without deleting it.
+- **Delete** removes the row and the uploaded file. Clips that came from `assets/audio/` keep their file in the repository; only the database row is removed.
+- The public player reads published rows from Supabase. If the database is unreachable it silently falls back to the hard-coded list, so visitors never see an empty section.
+
+### Security notes
+
+- The **anon** key in `assets/data/supabase.js` is public by design. Every write is checked by row-level security against the `admins` table.
+- **Never** put the `service_role` key in this repository or in the browser. It bypasses all rules.
+- To revoke someone's access, delete their row from `public.admins`.
+- Free Supabase projects pause after a period of inactivity. While paused, the player falls back to the built-in clips and the dashboard cannot sign in; open the Supabase dashboard to wake it. Check the current free-tier limits before relying on storage for a large library.
+
+### If something breaks
+
+| Symptom | Likely cause |
+|---|---|
+| Setup checklist stays visible | `assets/data/supabase.js` still has blank values, or the deploy did not pick up the change |
+| "This account is not on the admin list" | The user exists but has no row in `public.admins` |
+| Upload fails with a policy error | `schema.sql` was not run in full, or the storage policies were skipped |
+| Player shows the old 11 clips | Supabase unreachable, no published rows, or the anon key is wrong — check the browser console |
+
+---
+
+## 6. Customising the site
 
 ### Contact details
 
@@ -176,11 +240,14 @@ The home page “Listen” card repeats the Instagram, TikTok and YouTube links 
 
 The `#music` section explains how a JAMIX PRO UG set is built and points visitors to the official channels. It also contains a **Drops & IDs** player for short venue tags, booking lines and shout-outs.
 
-- Audio clips live in `assets/audio/`. The player reads the file names listed in the `data-src` attributes in `index.html`.
+- The player asks Supabase for the published clips, in playlist order, once the page loads. If Supabase is unconfigured or unreachable it keeps the 11 clips hard-coded in `index.html`, so the section never breaks.
+- The original clips live in `assets/audio/`. New clips uploaded through `admin.html` go to Supabase Storage instead.
 - Playback only starts when a visitor chooses a clip; nothing autoplays.
 - The player has play/pause, previous/next, seek and a live status message. It shows a clear message if a clip cannot be loaded.
 - The vinyl graphic is drawn in CSS and stops spinning when the visitor prefers reduced motion.
 - The copy is adapted from the article “How a JAMIX PRO UG set is built” in `assets/data/posts.js`; keep the two consistent if you edit one.
+
+The playlist is normally managed from `/admin.html` — see section 5. The table below documents the 11 clips that shipped with the site and are used as the database seed and as the no-JavaScript fallback.
 
 The current playlist uses these files (original names, copied into `assets/audio/`):
 
@@ -254,7 +321,7 @@ Changing those values updates most of the site consistently. Headings use Instru
 
 ---
 
-## 6. Honesty and placeholder notes
+## 7. Honesty and placeholder notes
 
 This build deliberately avoids inventing facts. Before publishing, review these items:
 
@@ -272,7 +339,7 @@ Anything you add later — reviews, prices, client names, statistics — should 
 
 ---
 
-## 7. Publishing with GitHub Desktop and Render
+## 8. Publishing with GitHub Desktop and Render
 
 ### Step A — put the site on GitHub
 
@@ -321,7 +388,7 @@ Before pushing, check the **Changes** tab in GitHub Desktop to make sure you are
 
 ---
 
-## 8. Testing checklist
+## 9. Testing checklist
 
 Run through these before and after publishing:
 
@@ -340,21 +407,25 @@ Run through these before and after publishing:
 - [ ] Layout holds at 360px, 768px, 1024px and 1440px wide.
 - [ ] With JavaScript disabled, core pages and article links still work (the blog listing falls back to a plain list).
 - [ ] Keyboard focus is visible throughout, including on the cream form card.
+- [ ] `/admin.html` shows the setup checklist while Supabase is unconfigured, and the sign-in form once it is.
+- [ ] Signing in with an allowlisted account lists the clips; an account without an `admins` row is refused and signed out.
+- [ ] Adding, renaming, hiding, reordering and deleting a clip all survive a page reload and show on the home player.
 
 ---
 
-## 9. Technical notes
+## 10. Technical notes
 
 - **No build step.** HTML, CSS and JS are served as written.
 - **Relative paths.** All local links are relative, so the site works at a domain root or a subpath.
-- **Fonts.** Google Fonts is the only external runtime request. If it is blocked, the site falls back to system fonts and remains usable.
+- **Fonts.** Google Fonts is the only external request on public pages (plus Supabase reads for the playlist when configured). If it is blocked, the site falls back to system fonts and remains usable.
 - **Images.** WebP is used where a `<picture>` element is present, with a JPG fallback for older browsers.
 - **Accessibility.** Skip link, semantic landmarks, visible focus styles, labelled form fields, error messages announced via live regions, keyboard-operable filters and lightbox, `prefers-reduced-motion` support.
 - **No analytics or tracking** is installed. Add analytics only with the owner's consent and, where required, an appropriate cookie notice.
-- **No site backend.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
+- **No site backend of its own.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
+- **Drops data.** Playlist titles and order live in Supabase (Postgres), audio added through the dashboard lives in Supabase Storage, and all writes are gated by row-level security. The public player only ever reads published rows.
 
 ---
 
-## 10. Ownership
+## 11. Ownership
 
 Site code and layout were produced for JAMIX PRO UG. Brand artwork and photography were supplied by the brand owner; confirm rights and permissions before commercial use. Third-party names and logos that appear in event artwork remain the property of their respective owners.

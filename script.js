@@ -835,12 +835,94 @@
     const currentEl = $("[data-drops-current]", drops);
     const durationEl = $("[data-drops-duration]", drops);
     const statusEl = $("[data-drops-status]", drops);
-    const trackButtons = $$(".drops-track", drops);
+    const listEl = $(".drops-list", drops);
+    const countEl = $("[data-drops-count]", drops);
+    let trackButtons = $$(".drops-track", drops);
     let currentIndex = -1;
     let playRequest = 0;
 
     const announce = (message) => {
       if (statusEl) statusEl.textContent = message;
+    };
+
+    const encodeSegment = (segment) => {
+      try {
+        return encodeURIComponent(decodeURIComponent(segment));
+      } catch (error) {
+        return encodeURIComponent(segment);
+      }
+    };
+
+    const resolveSource = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return raw.split("/").map(encodeSegment).join("/");
+    };
+
+    const renderTracks = (rows) => {
+      if (!listEl) return;
+      if (!audio.paused || currentIndex >= 0) return;
+      const fragment = document.createDocumentFragment();
+      rows.forEach((row, index) => {
+        if (!row || !row.file_path) return;
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "drops-track";
+        button.dataset.src = resolveSource(row.file_path);
+        button.dataset.title = row.title || "Untitled clip";
+
+        const number = document.createElement("span");
+        number.className = "drops-track__num";
+        number.setAttribute("aria-hidden", "true");
+        number.textContent = String(index + 1).padStart(2, "0");
+
+        const name = document.createElement("span");
+        name.className = "drops-track__name";
+        name.textContent = row.title || "Untitled clip";
+
+        const bars = document.createElement("span");
+        bars.className = "drops-track__bars";
+        bars.setAttribute("aria-hidden", "true");
+        bars.innerHTML = "<i></i><i></i><i></i>";
+
+        button.appendChild(number);
+        button.appendChild(name);
+        button.appendChild(bars);
+        item.appendChild(button);
+        fragment.appendChild(item);
+      });
+
+      listEl.textContent = "";
+      listEl.appendChild(fragment);
+      trackButtons = $$(".drops-track", drops);
+      currentIndex = -1;
+      if (countEl) countEl.textContent = String(trackButtons.length);
+    };
+
+    const loadPlaylist = async () => {
+      const config = window.JAMIX_SUPABASE || {};
+      if (!config.url || !config.anonKey) return;
+      try {
+        const endpoint =
+          String(config.url).replace(/\/+$/, "") +
+          "/rest/v1/drops?select=title,file_path&is_published=eq.true&order=sort_order.asc,created_at.asc";
+        const response = await fetch(endpoint, {
+          headers: {
+            apikey: config.anonKey,
+            Authorization: "Bearer " + config.anonKey,
+            Accept: "application/json"
+          }
+        });
+        if (!response.ok) return;
+        const rows = await response.json();
+        if (!Array.isArray(rows)) return;
+        renderTracks(rows);
+        if (!rows.length) announce("No clips are published right now.");
+      } catch (error) {
+        /* Keep the built-in list when the database is unreachable. */
+      }
     };
 
     const formatTime = (value) => {
@@ -908,8 +990,12 @@
       if (shouldPlay) requestPlay();
     };
 
-    trackButtons.forEach((button, index) => {
-      button.addEventListener("click", () => {
+    if (listEl) {
+      listEl.addEventListener("click", (event) => {
+        const button = event.target.closest(".drops-track");
+        if (!button) return;
+        const index = trackButtons.indexOf(button);
+        if (index < 0) return;
         if (index !== currentIndex) {
           loadTrack(index, true);
           return;
@@ -917,7 +1003,7 @@
         if (audio.paused) requestPlay();
         else audio.pause();
       });
-    });
+    }
 
     if (playButton) {
       playButton.setAttribute("aria-pressed", "false");
@@ -979,6 +1065,7 @@
     });
 
     paintPlaying(false);
+    loadPlaylist();
   }
 
   /* ----------------------------------------------------------

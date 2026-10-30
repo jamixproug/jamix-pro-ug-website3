@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drops admin — JAMIX PRO UG</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#060d1c">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <a class="skip-link" href="#admin-main">Skip to content</a>
+
+  <header class="admin-header">
+    <div class="admin-header__inner">
+      <a class="brand" href="index.html" aria-label="JAMIX PRO UG — home">
+        <img class="brand-mark" src="assets/icons/logo-mark.svg" alt="" width="44" height="44">
+        <span class="brand-text">
+          <span class="brand-name">JAMIX <span>PRO UG</span></span>
+          <span class="brand-sub">Music · DJ · Lifestyle</span>
+        </span>
+      </a>
+      <span class="admin-badge">Admin</span>
+      <div class="admin-account" data-account hidden>
+        <span class="admin-account__email" data-account-email></span>
+        <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-signout>Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="admin-main" class="admin-main">
+    <noscript>
+      <div class="admin-card">
+        <p class="eyebrow">JavaScript required</p>
+        <h1>This dashboard needs JavaScript</h1>
+        <p class="admin-lede">
+          The playlist editor talks to Supabase directly from your browser. Enable JavaScript and reload,
+          or edit the playlist in the Supabase dashboard instead.
+        </p>
+      </div>
+    </noscript>
+
+    <!-- Shown when assets/data/supabase.js has no URL or key -->
+    <section class="admin-card admin-setup" data-setup hidden aria-labelledby="setup-title">
+      <p class="eyebrow">One-time setup</p>
+      <h1 id="setup-title">Connect Supabase to switch this on</h1>
+      <p class="admin-lede">
+        The dashboard is built, but it has nowhere to save yet. These steps take about ten minutes
+        and only need doing once.
+      </p>
+      <ol class="admin-steps">
+        <li>
+          Create a free project at
+          <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">supabase.com/dashboard</a>.
+        </li>
+        <li>
+          Open <strong>SQL Editor</strong>, paste the contents of <code>supabase/schema.sql</code>
+          and run it. That creates the tables, the security rules, the audio bucket and your 11 clips.
+        </li>
+        <li>
+          Under <strong>Authentication → Users</strong>, add a user with your email and a strong password.
+          Then run the commented <code>insert</code> at the end of <code>schema.sql</code> with that email —
+          that is what grants access. Signing up alone gives you nothing.
+        </li>
+        <li>
+          Under <strong>Project Settings → API</strong>, copy the <strong>Project URL</strong> and the
+          <strong>anon public</strong> key into <code>assets/data/supabase.js</code>, then redeploy.
+        </li>
+      </ol>
+      <p class="admin-note">
+        The anon key is meant to be public — the security rules protect your data. Never put the
+        <code>service_role</code> key in the repository: it bypasses every rule.
+      </p>
+    </section>
+
+    <!-- Sign in -->
+    <section class="admin-auth" data-auth hidden aria-labelledby="auth-title">
+      <div class="admin-card admin-card--narrow">
+        <p class="eyebrow">Restricted</p>
+        <h1 id="auth-title">Sign in to manage drops</h1>
+        <p class="admin-lede">Only accounts on the admin list can change the playlist.</p>
+        <form class="admin-form" data-login novalidate>
+          <label class="admin-field">
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="username" required>
+          </label>
+          <label class="admin-field">
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="current-password" required>
+          </label>
+          <button class="btn btn-gold admin-submit" type="submit" data-login-submit>Sign in</button>
+          <p class="admin-error" data-login-error role="alert"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section data-dashboard hidden aria-labelledby="dash-title">
+      <div class="admin-head">
+        <div>
+          <p class="eyebrow">Drops &amp; IDs</p>
+          <h1 id="dash-title">Playlist</h1>
+        </div>
+        <p class="admin-count">
+          <b data-count-published>0</b> published
+          <span class="admin-count__sep">·</span>
+          <span data-count-total>0</span> total
+        </p>
+      </div>
+
+      <div class="admin-grid">
+        <section class="admin-card" aria-labelledby="add-title">
+          <h2 id="add-title">Add a clip</h2>
+          <p class="admin-hint">The file uploads to Supabase Storage, so it works from any device.</p>
+          <form class="admin-form" data-add>
+            <label class="admin-field">
+              <span>Title</span>
+              <input name="title" maxlength="80" required placeholder="e.g. Club Silk ID">
+            </label>
+            <label class="admin-field">
+              <span>MP3 file</span>
+              <input name="file" type="file" accept="audio/mpeg,audio/mp3,.mp3" required>
+            </label>
+            <p class="admin-hint">MP3 only, up to 10 MB. Clips of 5–15 seconds work best.</p>
+            <button class="btn btn-gold admin-submit" type="submit" data-add-submit>Upload and add</button>
+          </form>
+        </section>
+
+        <section class="admin-card" aria-labelledby="list-title">
+          <div class="admin-card__head">
+            <h2 id="list-title">Clips</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-refresh>Refresh</button>
+          </div>
+          <p class="admin-empty" data-empty hidden>No clips yet. Add one on the left.</p>
+          <ol class="admin-list" data-list aria-label="Playlist clips"></ol>
+          <p class="admin-hint admin-hint--foot">
+            Changes appear on the public site within a minute — no redeploy needed. Hidden clips stay
+            in this list but disappear from the player.
+          </p>
+        </section>
+      </div>
+
+      <p class="admin-preview">
+        <a class="link-arrow" href="index.html#music">Open the public player</a>
+      </p>
+    </section>
+  </main>
+
+  <p class="admin-status" data-status role="status" aria-live="polite"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" defer></script>
+  <script src="assets/data/supabase.js" defer></script>
+  <script src="admin.js" defer></script>
+</body>
+</html>
