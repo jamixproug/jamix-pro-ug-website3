@@ -18,7 +18,7 @@
   const SITE = {
     whatsapp: "256763873852",
     email: "jamixproug@gmail.com",
-    formEndpoint: "https://formspree.io/f/xppplekn",
+    formEndpoint: "https://formspree.io/f/mdeedvje",
     demoNotice:
       "Demo mode: this form is not connected to a mailbox yet. You can send the same details on WhatsApp in one tap.",
   };

@@ -101,7 +101,7 @@ jamix-pro-ug-website/
 
 ## 4. How the contact form behaves
 
-The booking form is live. Valid enquiries are posted to **Formspree** (endpoint `https://formspree.io/f/xppplekn`) and delivered to `jamixproug@gmail.com`.
+The booking form is live. Valid enquiries are posted to **Formspree** (endpoint `https://formspree.io/f/mdeedvje`) and delivered to `jamixproug@gmail.com`.
 
 When a visitor submits a valid enquiry:
 
@@ -126,7 +126,7 @@ Open `script.js` and edit `formEndpoint`:
 const SITE = {
   whatsapp: "256763873852",
   email: "jamixproug@gmail.com",
-  formEndpoint: "https://formspree.io/f/xppplekn",
+  formEndpoint: "https://formspree.io/f/mdeedvje",
   ...
 };
 ```
