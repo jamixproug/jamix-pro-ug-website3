@@ -563,6 +563,7 @@
     let isSubmitting = false;
 
     if (demoNote && !SITE.formEndpoint) demoNote.textContent = SITE.demoNotice;
+    if (submitButton && !SITE.formEndpoint) submitButton.textContent = "Prepare enquiry";
     if (dateField) {
       const today = new Date();
       const iso = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
