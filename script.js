@@ -9,15 +9,16 @@
   /* ----------------------------------------------------------
      Site configuration
      ----------------------------------------------------------
-     FORM_ENDPOINT: leave empty until a real form backend exists.
-     When empty, the contact form validates and prepares the
-     enquiry but clearly tells the visitor it has not been sent.
-     Example: "https://formspree.io/f/your-form-id"
+     FORM_ENDPOINT: Formspree endpoint for the booking form.
+     When set, valid enquiries are posted to Formspree and the
+     visitor sees a sent confirmation. Set it to "" to return to
+     demo mode, where the form prepares the enquiry but clearly
+     tells the visitor it has not been sent.
   ---------------------------------------------------------- */
   const SITE = {
     whatsapp: "256763873852",
     email: "jamixproug@gmail.com",
-    formEndpoint: "",
+    formEndpoint: "https://formspree.io/f/xnqkvnjr",
     demoNotice:
       "Demo mode: this form is not connected to a mailbox yet. You can send the same details on WhatsApp in one tap.",
   };
@@ -560,7 +561,7 @@
     const demoNote = $("#form-demo-note");
     const dateField = $("#event-date");
 
-    if (demoNote) demoNote.textContent = SITE.demoNotice;
+    if (demoNote && !SITE.formEndpoint) demoNote.textContent = SITE.demoNotice;
     if (dateField) {
       const today = new Date();
       const iso = new Date(today.getTime() - today.getTimezoneOffset() * 60000)

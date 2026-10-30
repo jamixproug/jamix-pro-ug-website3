@@ -229,10 +229,11 @@
 
             <div class="form-note">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 10.5V17M12 7.4v.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              <span id="form-demo-note">This form is a front-end demo and is not connected to a mailbox yet. When you submit, you will be able to send the same details on WhatsApp or by email.</span>
+              <span id="form-demo-note">Your enquiry is sent securely through Formspree to the JAMIX PRO UG booking inbox. We use your details only to reply to this enquiry.</span>
             </div>
 
             <form id="contact-form" novalidate>
+              <input type="hidden" name="_subject" value="Booking enquiry — JAMIX PRO UG website">
               <noscript>
                 <p class="form-note">JavaScript is switched off, so the review step cannot run. Please email <a href="mailto:jamixproug@gmail.com">jamixproug@gmail.com</a> or message <a href="https://wa.me/256763873852" target="_blank" rel="noopener">+256 763 873 852 on WhatsApp</a> with your event details.</p>
               </noscript>
@@ -292,7 +293,7 @@
               <div class="field" style="margin-top:16px">
                 <div class="checkbox-field">
                   <input type="checkbox" id="consent" name="consent" aria-describedby="consent-error">
-                  <label for="consent">I agree that JAMIX PRO UG may reply to this enquiry using the contact details I provide. <span class="req">*</span></label>
+                  <label for="consent">I agree that JAMIX PRO UG may use these details to reply to this enquiry. <span class="req">*</span></label>
                 </div>
                 <p class="field-error" id="consent-error" aria-live="polite"></p>
               </div>

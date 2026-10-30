@@ -22,7 +22,7 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks, no build step,
 Supporting files:
 
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
-- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, form validation and demo submission.
+- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, form validation and Formspree submission.
 - `assets/data/posts.js` — all article content in one editable file.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
@@ -101,34 +101,37 @@ jamix-pro-ug-website/
 
 ## 4. How the contact form behaves
 
-**Important:** the form is a front-end demo until a form endpoint is configured. It does **not** send email on its own, and the site never claims that it does.
+The booking form is live. Valid enquiries are posted to **Formspree** (endpoint `https://formspree.io/f/xnqkvnjr`) and delivered to `jamixproug@gmail.com`.
 
 When a visitor submits a valid enquiry:
 
-1. The details stay in the browser.
-2. A panel explains that nothing has been sent yet.
-3. The visitor can send the same message via **WhatsApp**, open a pre-filled **email**, or **copy** the enquiry.
+1. The form validates each field in the browser and focuses the first error if something is missing.
+2. The details are sent over HTTPS to Formspree and forwarded to the booking inbox.
+3. A confirmation panel says the message has been sent, with an option to continue on WhatsApp.
+4. If the request fails, an error panel explains that nothing went through and offers WhatsApp or email instead.
 
-This is deliberate: a static site has no server to receive form posts.
+A hidden honeypot field quietly stops basic bots, and Formspree applies its own spam filtering. The site itself does not store submissions.
 
-### Connecting a real form service
+### Form service settings
 
-1. Create a form endpoint with a service such as Formspree, Basin, Getform, Netlify Forms or your own handler.
-2. Open `script.js` and set `formEndpoint`:
+- **Plan:** the free Formspree tier covers 50 submissions per month. Check the Formspree dashboard if the site becomes busy; upgrade or switch services before the limit is reached.
+- **Allowed domains:** in Formspree, restrict the form to `jamix-pro-ug-website3.onrender.com` and any custom domain. Requests from other domains should be rejected.
+- **Recipient:** confirm that `jamixproug@gmail.com` is monitored and that Formspree notifications are not being filtered as spam.
 
-   ```js
-   const SITE = {
-     whatsapp: "256763873852",
-     email: "jamixproug@gmail.com",
-     formEndpoint: "https://formspree.io/f/your-form-id",
-     ...
-   };
-   ```
+### Changing the endpoint
 
-3. Reload the site and submit a test enquiry.
-4. Confirm the service received it, then check the success message appears.
+Open `script.js` and edit `formEndpoint`:
 
-Never place private API keys, passwords or SMTP credentials in this repository. A form endpoint URL is fine; secrets are not.
+```js
+const SITE = {
+  whatsapp: "256763873852",
+  email: "jamixproug@gmail.com",
+  formEndpoint: "https://formspree.io/f/xnqkvnjr",
+  ...
+};
+```
+
+The endpoint URL is not a secret, but API keys are. Never place private keys, passwords or SMTP credentials in this repository. Setting `formEndpoint` to `""` returns the form to demo mode: it validates, states clearly that nothing was sent, and offers WhatsApp, email and copy actions instead.
 
 ---
 
@@ -235,7 +238,7 @@ This build deliberately avoids inventing facts. Before publishing, review these 
 - **Portfolio images** are brand and promotional material, not case studies. The page says so.
 - **No audio, mixes or video are hosted** on this site. The home listening section links to official channels and never claims to be a player.
 - **Social handles** need verification (see above).
-- **The contact form** is a demo until an endpoint is configured (see section 4).
+- **The contact form** delivers through Formspree to `jamixproug@gmail.com`. Confirm that inbox is monitored, that Formspree notifications are not caught by spam filters, and that the free-plan quota suits the site's traffic.
 - **The email address and WhatsApp number** should be confirmed as the official booking channels.
 
 Anything you add later — reviews, prices, client names, statistics — should be accurate and have permission to be published.
@@ -305,7 +308,7 @@ Run through these before and after publishing:
 - [ ] The home listening section shows two columns on desktop, one on mobile, and its channel links open the right profiles.
 - [ ] Article links open the right post and the related-post links work.
 - [ ] The contact form blocks invalid submissions, focuses the first error and explains each error.
-- [ ] A valid submission clearly says it has not been sent and offers WhatsApp/email/copy.
+- [ ] A valid submission shows the sent confirmation and arrives at `jamixproug@gmail.com`.
 - [ ] WhatsApp, email and social links open the intended destinations.
 - [ ] Layout holds at 360px, 768px, 1024px and 1440px wide.
 - [ ] With JavaScript disabled, core pages and article links still work (the blog listing falls back to a plain list).
@@ -321,7 +324,7 @@ Run through these before and after publishing:
 - **Images.** WebP is used where a `<picture>` element is present, with a JPG fallback for older browsers.
 - **Accessibility.** Skip link, semantic landmarks, visible focus styles, labelled form fields, error messages announced via live regions, keyboard-operable filters and lightbox, `prefers-reduced-motion` support.
 - **No analytics or tracking** is installed. Add analytics only with the owner's consent and, where required, an appropriate cookie notice.
-- **No backend.** Nothing is stored or transmitted except when a visitor chooses to open WhatsApp/email or when a form endpoint is configured.
+- **No site backend.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
 
 ---
 
