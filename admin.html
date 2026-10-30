@@ -60,13 +60,13 @@
           <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">supabase.com/dashboard</a>.
         </li>
         <li>
-          Open <strong>SQL Editor</strong>, paste the contents of <code>supabase/schema.sql</code>
-          and run it. That creates the tables, the security rules, the audio bucket and your 11 clips.
+          Under <strong>Authentication → Users</strong>, add a user with your email and a strong password,
+          and confirm it. Do this before the next step.
         </li>
         <li>
-          Under <strong>Authentication → Users</strong>, add a user with your email and a strong password.
-          Then run the commented <code>insert</code> at the end of <code>schema.sql</code> with that email —
-          that is what grants access. Signing up alone gives you nothing.
+          Open <strong>SQL Editor</strong>, paste the contents of <code>supabase/schema.sql</code>
+          and run it. That creates the tables, the security rules, the audio bucket, your 11 clips
+          and the admin entry for that user.
         </li>
         <li>
           Under <strong>Project Settings → API Keys</strong>, copy the <strong>Project URL</strong> and the

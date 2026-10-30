@@ -124,12 +124,12 @@ from (values
 ) as v(title, file_path, sort_order)
 where not exists (select 1 from public.drops);
 
--- ---------- 6. Create your admin account ----------
--- 1. Authentication → Users → Add user. Use a strong password and
---    your own email. Confirm the user (or confirm via the email link).
--- 2. Run the line below with that email in place of the placeholder.
---    It only works after the user exists.
---
--- insert into public.admins (user_id, email)
--- select id, email from auth.users where email = 'jamixproug@gmail.com'
--- on conflict (user_id) do nothing;
+-- ---------- 6. Admin account ----------
+-- Create the user FIRST: Authentication → Users → Add user, using
+-- jamixproug@gmail.com and a strong password, and confirm the user.
+-- Then run this whole file. The statement below allowlists that
+-- account. If the user does not exist yet it inserts nothing, so
+-- re-running this file after creating the user is safe.
+insert into public.admins (user_id, email)
+select id, email from auth.users where email = 'jamixproug@gmail.com'
+on conflict (user_id) do nothing;

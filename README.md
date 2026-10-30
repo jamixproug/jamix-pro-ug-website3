@@ -163,19 +163,12 @@ The page is deliberately not linked in the navigation. It is `noindex, nofollow`
 ### One-time setup
 
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops` table, the `admins` allowlist, the security policies, a public `drops` storage bucket and the 11 existing clips.
-3. Go to **Authentication → Users → Add user**. Use your own email and a strong password, and confirm the user.
-4. Back in **SQL Editor**, run this with your email. It is also at the bottom of `schema.sql`:
+2. Go to **Authentication → Users → Add user**. Use `jamixproug@gmail.com` with a strong password, and confirm the user. Do this before the next step: the schema allowlists the account by looking it up.
+3. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops` table, the `admins` allowlist, the security policies, a public `drops` storage bucket, the 11 existing clips and your admin row.
+4. Go to **Project Settings → API Keys** and copy the **Project URL** and the **publishable** key (older projects label it **anon public**) into `assets/data/supabase.js`. This repository is already configured for the live project.
+5. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
 
-   ```sql
-   insert into public.admins (user_id, email)
-   select id, email from auth.users where email = 'you@example.com'
-   on conflict (user_id) do nothing;
-   ```
-
-   Creating a user is not enough on its own — without this row the dashboard refuses the account.
-5. Go to **Project Settings → API Keys** and copy the **Project URL** and the **publishable** key (older projects label it **anon public**) into `assets/data/supabase.js`.
-6. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
+If the schema was run before the user existed, simply run it again — it is idempotent and will add the missing `admins` row.
 
 Leave the URL blank to go back to the previous behaviour: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
 
@@ -199,7 +192,7 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 | Symptom | Likely cause |
 |---|---|
 | Setup checklist stays visible | `assets/data/supabase.js` still has blank values, or the deploy did not pick up the change |
-| "This account is not on the admin list" | The user exists but has no row in `public.admins` |
+| "This account is not on the admin list" | The user exists but has no `admins` row — usually the schema ran before the user was created. Re-run `schema.sql` |
 | Upload fails with a policy error | `schema.sql` was not run in full, or the storage policies were skipped |
 | Player shows the old 11 clips | Supabase unreachable, no published rows, or the key is wrong — check the browser console |
 
