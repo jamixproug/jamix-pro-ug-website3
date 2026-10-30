@@ -903,15 +903,16 @@
 
     const loadPlaylist = async () => {
       const config = window.JAMIX_SUPABASE || {};
-      if (!config.url || !config.anonKey) return;
+      const publicKey = config.key || config.anonKey || "";
+      if (!config.url || !publicKey) return;
       try {
         const endpoint =
           String(config.url).replace(/\/+$/, "") +
           "/rest/v1/drops?select=title,file_path&is_published=eq.true&order=sort_order.asc,created_at.asc";
         const response = await fetch(endpoint, {
           headers: {
-            apikey: config.anonKey,
-            Authorization: "Bearer " + config.anonKey,
+            apikey: publicKey,
+            Authorization: "Bearer " + publicKey,
             Accept: "application/json"
           }
         });

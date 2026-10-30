@@ -69,12 +69,13 @@
           that is what grants access. Signing up alone gives you nothing.
         </li>
         <li>
-          Under <strong>Project Settings → API</strong>, copy the <strong>Project URL</strong> and the
-          <strong>anon public</strong> key into <code>assets/data/supabase.js</code>, then redeploy.
+          Under <strong>Project Settings → API Keys</strong>, copy the <strong>Project URL</strong> and the
+          <strong>publishable</strong> key (older projects: anon public) into
+          <code>assets/data/supabase.js</code>, then redeploy.
         </li>
       </ol>
       <p class="admin-note">
-        The anon key is meant to be public — the security rules protect your data. Never put the
+        The publishable key is meant to be public — the security rules protect your data. Never put the
         <code>service_role</code> key in the repository: it bypasses every rule.
       </p>
     </section>

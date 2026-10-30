@@ -27,7 +27,7 @@ Supporting files:
 - `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, form validation and Formspree submission.
 - `admin.js` — Supabase sign-in and playlist management for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
-- `assets/data/supabase.js` — Supabase project URL and public anon key (blank until configured).
+- `assets/data/supabase.js` — Supabase project URL and publishable key (older projects call it the anon key).
 - `supabase/schema.sql` — tables, security rules, storage bucket and seed data for the admin.
 - `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
@@ -174,10 +174,10 @@ The page is deliberately not linked in the navigation. It is `noindex, nofollow`
    ```
 
    Creating a user is not enough on its own — without this row the dashboard refuses the account.
-5. Go to **Project Settings → API** and copy the **Project URL** and the **anon public** key into `assets/data/supabase.js`.
+5. Go to **Project Settings → API Keys** and copy the **Project URL** and the **publishable** key (older projects label it **anon public**) into `assets/data/supabase.js`.
 6. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
 
-Leave both values blank to keep the site exactly as it is today: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
+Leave the URL blank to go back to the previous behaviour: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
 
 ### Using the dashboard
 
@@ -189,7 +189,7 @@ Leave both values blank to keep the site exactly as it is today: the player uses
 
 ### Security notes
 
-- The **anon** key in `assets/data/supabase.js` is public by design. Every write is checked by row-level security against the `admins` table.
+- The **publishable** key (formerly anon) in `assets/data/supabase.js` is public by design. Every write is checked by row-level security against the `admins` table.
 - **Never** put the `service_role` key in this repository or in the browser. It bypasses all rules.
 - To revoke someone's access, delete their row from `public.admins`.
 - Free Supabase projects pause after a period of inactivity. While paused, the player falls back to the built-in clips and the dashboard cannot sign in; open the Supabase dashboard to wake it. Check the current free-tier limits before relying on storage for a large library.
@@ -201,7 +201,7 @@ Leave both values blank to keep the site exactly as it is today: the player uses
 | Setup checklist stays visible | `assets/data/supabase.js` still has blank values, or the deploy did not pick up the change |
 | "This account is not on the admin list" | The user exists but has no row in `public.admins` |
 | Upload fails with a policy error | `schema.sql` was not run in full, or the storage policies were skipped |
-| Player shows the old 11 clips | Supabase unreachable, no published rows, or the anon key is wrong — check the browser console |
+| Player shows the old 11 clips | Supabase unreachable, no published rows, or the key is wrong — check the browser console |
 
 ---
 

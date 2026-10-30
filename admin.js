@@ -7,9 +7,9 @@
   "use strict";
 
   const config = window.JAMIX_SUPABASE || {};
+  const publicKey = String(config.key || config.anonKey || "");
   const configured =
-    /^https?:\/\//.test(String(config.url || "")) &&
-    String(config.anonKey || "").length > 20;
+    /^https?:\/\//.test(String(config.url || "")) && publicKey.length > 20;
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
@@ -549,7 +549,7 @@
 
     client = window.supabase.createClient(
       String(config.url).replace(/\/+$/, ""),
-      config.anonKey
+      publicKey
     );
 
     client.auth.getSession().then(function (response) {

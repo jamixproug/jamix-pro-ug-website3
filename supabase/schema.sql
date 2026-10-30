@@ -131,5 +131,5 @@ where not exists (select 1 from public.drops);
 --    It only works after the user exists.
 --
 -- insert into public.admins (user_id, email)
--- select id, email from auth.users where email = 'you@example.com'
+-- select id, email from auth.users where email = 'jamixproug@gmail.com'
 -- on conflict (user_id) do nothing;
