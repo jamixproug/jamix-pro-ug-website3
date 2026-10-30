@@ -174,12 +174,33 @@ The home page “Listen” card repeats the Instagram, TikTok and YouTube links 
 
 ### Listening section (home)
 
-The `#music` section explains how a JAMIX PRO UG set is built and points visitors to the official channels. It is not an audio player:
+The `#music` section explains how a JAMIX PRO UG set is built and points visitors to the official channels. It also contains a **Drops & IDs** player for short venue tags, booking lines and shout-outs.
 
-- No audio or video files are hosted in this repository.
-- The links open TikTok, YouTube and Instagram in a new tab.
+- Audio clips live in `assets/audio/`. The player reads the file names listed in the `data-src` attributes in `index.html`.
+- Playback only starts when a visitor chooses a clip; nothing autoplays.
+- The player has play/pause, previous/next, seek and a live status message. It shows a clear message if a clip cannot be loaded.
 - The vinyl graphic is drawn in CSS and stops spinning when the visitor prefers reduced motion.
 - The copy is adapted from the article “How a JAMIX PRO UG set is built” in `assets/data/posts.js`; keep the two consistent if you edit one.
+
+The current playlist uses these files (original names, copied into `assets/audio/`):
+
+| Title | File |
+|---|---|
+| A Kafumbe Hotel | `A  Kafumbe hotel.mp3` |
+| A & K Htel | `A & K htel.mp3` |
+| A and K Hotel | `A and K hotel.mp3` |
+| A and K Road | `A and K road.mp3` |
+| Bright DJay | `bright djay.mp3` |
+| Call 0763 87 | `call 0 7 6 3 8 7.mp3` |
+| DJ Fred Senior | `Dj Fred senior.mp3` |
+| For Booking, Call 0763 | `for booking call 0 7 6 3.mp3` |
+| JK Entertainment DJs | `jk entertainment djays.mp3` |
+| Mr Vibe | `Mr Vibe.mp3` |
+| This JK Entertainment DJs | `this jk entertainment djays.mp3` |
+
+The `~1` files in the source folder (`Mr Vibe~1.mp3`, `call 0 7 6 3 8 7~1.mp3`, `for booking call 0 7 6 3~1.mp3`) were treated as duplicate copies and are not listed. If they are different takes, add them to the playlist and update the clip count.
+
+**Encoding:** the `data-src` values are percent-encoded, so the files can keep their original names with spaces and `&`. Do not rename a file without updating the matching `data-src`.
 
 ### Blog articles
 

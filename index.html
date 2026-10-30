@@ -308,6 +308,132 @@
           </aside>
         </div>
 
+        <div class="drops-panel" data-drops data-reveal>
+          <div class="drops-head">
+            <div>
+              <p class="eyebrow">Drops &amp; IDs</p>
+              <h3>Short clips, straight to the room.</h3>
+              <p>Venue tags, booking lines and shout-outs recorded for JAMIX PRO UG. Choose a clip to play — nothing starts automatically.</p>
+            </div>
+            <span class="drops-count"><b>11</b> clips</span>
+          </div>
+
+          <div class="drops-body">
+            <div class="drops-player">
+              <audio id="drops-audio" preload="none"></audio>
+
+              <div class="drops-now">
+                <button class="drops-play" type="button" data-drops-play aria-label="Play clip">
+                  <svg class="drops-icon drops-icon--play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z" fill="currentColor"/></svg>
+                  <svg class="drops-icon drops-icon--pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z" fill="currentColor"/></svg>
+                </button>
+                <div class="drops-now__copy">
+                  <span>Now playing</span>
+                  <strong data-drops-title>Choose a clip</strong>
+                </div>
+                <p class="drops-time"><span data-drops-current>0:00</span><span class="drops-time__sep">/</span><span data-drops-duration>0:00</span></p>
+              </div>
+
+              <label class="drops-seek">
+                <span class="sr-only">Seek within the clip</span>
+                <input type="range" min="0" max="100" value="0" step="0.1" data-drops-seek>
+              </label>
+
+              <div class="drops-controls">
+                <button class="drops-step" type="button" data-drops-prev aria-label="Previous clip">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 9 12l9 6V6ZM6 5v14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Previous</span>
+                </button>
+                <button class="drops-step" type="button" data-drops-next aria-label="Next clip">
+                  <span>Next</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 9 6-9 6V6Zm12-1v14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <p class="drops-status" data-drops-status role="status" aria-live="polite"></p>
+              </div>
+            </div>
+
+            <ol class="drops-list" aria-label="JAMIX PRO UG drops and station IDs">
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/A%20%20Kafumbe%20hotel.mp3" data-title="A Kafumbe Hotel">
+                  <span class="drops-track__num" aria-hidden="true">01</span>
+                  <span class="drops-track__name">A Kafumbe Hotel</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/A%20%26%20K%20htel.mp3" data-title="A &amp; K Htel">
+                  <span class="drops-track__num" aria-hidden="true">02</span>
+                  <span class="drops-track__name">A &amp; K Htel</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/A%20and%20K%20hotel.mp3" data-title="A and K Hotel">
+                  <span class="drops-track__num" aria-hidden="true">03</span>
+                  <span class="drops-track__name">A and K Hotel</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/A%20and%20K%20road.mp3" data-title="A and K Road">
+                  <span class="drops-track__num" aria-hidden="true">04</span>
+                  <span class="drops-track__name">A and K Road</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/bright%20djay.mp3" data-title="Bright DJay">
+                  <span class="drops-track__num" aria-hidden="true">05</span>
+                  <span class="drops-track__name">Bright DJay</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/call%200%207%206%203%208%207.mp3" data-title="Call 0763 87">
+                  <span class="drops-track__num" aria-hidden="true">06</span>
+                  <span class="drops-track__name">Call 0763 87</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/Dj%20Fred%20senior.mp3" data-title="DJ Fred Senior">
+                  <span class="drops-track__num" aria-hidden="true">07</span>
+                  <span class="drops-track__name">DJ Fred Senior</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/for%20booking%20call%200%207%206%203.mp3" data-title="For Booking, Call 0763">
+                  <span class="drops-track__num" aria-hidden="true">08</span>
+                  <span class="drops-track__name">For Booking, Call 0763</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/jk%20entertainment%20djays.mp3" data-title="JK Entertainment DJs">
+                  <span class="drops-track__num" aria-hidden="true">09</span>
+                  <span class="drops-track__name">JK Entertainment DJs</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/Mr%20Vibe.mp3" data-title="Mr Vibe">
+                  <span class="drops-track__num" aria-hidden="true">10</span>
+                  <span class="drops-track__name">Mr Vibe</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+              <li>
+                <button class="drops-track" type="button" data-src="assets/audio/this%20jk%20entertainment%20djays.mp3" data-title="This JK Entertainment DJs">
+                  <span class="drops-track__num" aria-hidden="true">11</span>
+                  <span class="drops-track__name">This JK Entertainment DJs</span>
+                  <span class="drops-track__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+              </li>
+            </ol>
+          </div>
+        </div>
+
         <div class="genre-strip" data-reveal>
           <span class="genre-strip__label">In the crate</span>
           <div class="tag-row">

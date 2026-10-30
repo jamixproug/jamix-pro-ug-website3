@@ -821,6 +821,167 @@
   }
 
   /* ----------------------------------------------------------
+     Drops & IDs player
+  ---------------------------------------------------------- */
+  const drops = $("[data-drops]");
+
+  if (drops) {
+    const audio = $("#drops-audio", drops);
+    const playButton = $("[data-drops-play]", drops);
+    const prevButton = $("[data-drops-prev]", drops);
+    const nextButton = $("[data-drops-next]", drops);
+    const seek = $("[data-drops-seek]", drops);
+    const titleEl = $("[data-drops-title]", drops);
+    const currentEl = $("[data-drops-current]", drops);
+    const durationEl = $("[data-drops-duration]", drops);
+    const statusEl = $("[data-drops-status]", drops);
+    const trackButtons = $$(".drops-track", drops);
+    let currentIndex = -1;
+    let playRequest = 0;
+
+    const announce = (message) => {
+      if (statusEl) statusEl.textContent = message;
+    };
+
+    const formatTime = (value) => {
+      if (!Number.isFinite(value) || value < 0) return "0:00";
+      const total = Math.floor(value);
+      return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
+    };
+
+    const paintProgress = () => {
+      const duration = audio.duration;
+      const ratio = Number.isFinite(duration) && duration > 0 ? audio.currentTime / duration : 0;
+      if (seek) {
+        seek.value = String(ratio * 100);
+        seek.style.setProperty("--progress", (ratio * 100).toFixed(2) + "%");
+      }
+      if (currentEl) currentEl.textContent = formatTime(audio.currentTime);
+    };
+
+    const paintPlaying = (playing) => {
+      drops.classList.toggle("is-playing", playing);
+      if (playButton) {
+        playButton.setAttribute("aria-label", playing ? "Pause clip" : "Play clip");
+        playButton.setAttribute("aria-pressed", playing ? "true" : "false");
+      }
+      trackButtons.forEach((button, index) => {
+        button.classList.toggle("is-playing", playing && index === currentIndex);
+        if (index === currentIndex) button.setAttribute("aria-current", "true");
+        else button.removeAttribute("aria-current");
+      });
+    };
+
+    const requestPlay = () => {
+      const token = ++playRequest;
+      const attempt = audio.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch((error) => {
+          if (token !== playRequest || (error && error.name === "AbortError")) return;
+          paintPlaying(false);
+          announce("This clip could not be played. Please try another clip.");
+        });
+      }
+    };
+
+    const loadTrack = (index, shouldPlay) => {
+      if (!trackButtons.length) return;
+      currentIndex = (index + trackButtons.length) % trackButtons.length;
+      const button = trackButtons[currentIndex];
+      const source = button.dataset.src;
+      const title = button.dataset.title || "Untitled clip";
+      if (!source) return;
+
+      titleEl.textContent = title;
+      trackButtons.forEach((item, itemIndex) => {
+        item.classList.toggle("is-active", itemIndex === currentIndex);
+      });
+      audio.src = source;
+      audio.load();
+      if (durationEl) durationEl.textContent = "0:00";
+      if (currentEl) currentEl.textContent = "0:00";
+      if (seek) {
+        seek.value = "0";
+        seek.style.setProperty("--progress", "0%");
+      }
+      announce("Loading " + title + "…");
+      if (shouldPlay) requestPlay();
+    };
+
+    trackButtons.forEach((button, index) => {
+      button.addEventListener("click", () => {
+        if (index !== currentIndex) {
+          loadTrack(index, true);
+          return;
+        }
+        if (audio.paused) requestPlay();
+        else audio.pause();
+      });
+    });
+
+    if (playButton) {
+      playButton.setAttribute("aria-pressed", "false");
+      playButton.addEventListener("click", () => {
+        if (currentIndex < 0) {
+          loadTrack(0, true);
+          return;
+        }
+        if (audio.paused) requestPlay();
+        else audio.pause();
+      });
+    }
+
+    if (prevButton) {
+      prevButton.addEventListener("click", () => {
+        loadTrack(currentIndex < 0 ? 0 : currentIndex - 1, true);
+      });
+    }
+
+    if (nextButton) {
+      nextButton.addEventListener("click", () => {
+        loadTrack(currentIndex < 0 ? 0 : currentIndex + 1, true);
+      });
+    }
+
+    if (seek) {
+      seek.addEventListener("input", () => {
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+        audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+        paintProgress();
+      });
+    }
+
+    audio.addEventListener("play", () => {
+      paintPlaying(true);
+      const title = currentIndex >= 0 ? trackButtons[currentIndex].dataset.title : "clip";
+      announce("Playing " + title + ".");
+    });
+
+    audio.addEventListener("pause", () => paintPlaying(false));
+
+    audio.addEventListener("loadedmetadata", () => {
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
+    });
+
+    audio.addEventListener("timeupdate", paintProgress);
+
+    audio.addEventListener("ended", () => {
+      if (currentIndex < trackButtons.length - 1) loadTrack(currentIndex + 1, true);
+      else {
+        paintPlaying(false);
+        announce("End of the drops playlist.");
+      }
+    });
+
+    audio.addEventListener("error", () => {
+      paintPlaying(false);
+      announce("This clip is not available yet. Please try another clip.");
+    });
+
+    paintPlaying(false);
+  }
+
+  /* ----------------------------------------------------------
      Small enhancement: external links open safely
   ---------------------------------------------------------- */
   $$('a[target="_blank"]').forEach((link) => {
