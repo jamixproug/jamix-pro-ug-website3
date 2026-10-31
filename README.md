@@ -23,17 +23,18 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build st
 | Forgot / reset password | `forgot-password.html`, `reset-password.html` | Sends a single-use reset link and sets the new password (`noindex`) |
 | My account | `account.html` | Private dashboard: full name, picture, email status, joining date and sign out (`noindex`) |
 | Profile & security | `profile.html` | Edit full name, upload or remove the profile picture, change the password and sign out (`noindex`) |
-| Media admin | `admin.html` | Private dashboard to manage drops, songs, gallery photos, videos, radio and registered users (not linked in navigation, `noindex`) |
+| Media admin | `admin.html` | Private dashboard to manage drops, songs, gallery photos, videos, radio, registered users and analytics (not linked in navigation, `noindex`) |
 | Not found | `404.html` | Friendly fallback page for broken or old links |
 
 Supporting files:
 
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
 - `admin.css` — admin-only layout, built on the same tokens.
-- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player, uploaded-video player, live radio player, uploaded-photo gallery, form validation and Formspree submission.
-- `admin.js` — Supabase sign-in and drops, songs, photos, videos, radio settings and registered-user management for `admin.html`.
+- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player with download buttons, uploaded-video player, live radio player, uploaded-photo gallery, analytics event hooks, form validation and Formspree submission.
+- `admin.js` — Supabase sign-in, drops, songs, photos, videos, radio settings, registered-user management and the read-only analytics dashboard for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
 - `js/supabase.js` — Supabase project URL and publishable key (older projects call it the anon key).
+- `js/analytics.js` — the first-party visitor tracker loaded on every public page; it needs the URL and key from `js/supabase.js` and does nothing until `supabase/analytics.sql` has been run.
 - `js/auth.js` — shared session helpers for the account pages: client creation, friendly error text, password checks, profile loading and the signed-in guard.
 - `js/auth-pages.js` — sign-in, registration, forgot-password and reset-password behaviour.
 - `js/account.js` and `js/profile.js` — the account dashboard and the profile, picture and password forms.
@@ -41,6 +42,7 @@ Supporting files:
 - `supabase/videos.sql` — the standalone videos migration for a project that already has `schema.sql` installed.
 - `supabase/radio.sql` — the standalone live radio migration for a project that already has `schema.sql` installed.
 - `supabase/accounts.sql` — the standalone accounts migration: `profiles`, its security rules and grants, the `avatars` bucket and the admin suspension function.
+- `supabase/analytics.sql` — the standalone analytics migration: `analytics_events`, the de-duplication trigger and index, its security rules and column grants, and the admin report functions. It adds no bucket and touches no existing table.
 - `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
@@ -106,6 +108,7 @@ jamix-pro-ug-website/
 ├── README.md
 ├── js/
 │   ├── supabase.js
+│   ├── analytics.js
 │   ├── auth.js
 │   ├── auth-pages.js
 │   ├── account.js
@@ -114,7 +117,8 @@ jamix-pro-ug-website/
 │   ├── schema.sql
 │   ├── videos.sql
 │   ├── radio.sql
-│   └── accounts.sql
+│   ├── accounts.sql
+│   └── analytics.sql
 └── assets/
     ├── audio/            (11 MP3 clips)
     ├── data/
@@ -183,7 +187,7 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 
 ## 5. Media admin (Supabase)
 
-`admin.html` is a private dashboard for the site's media, live radio and registered users, split into six tabs:
+`admin.html` is a private dashboard for the site's media, live radio, registered users and traffic, split into seven tabs:
 
 - **Drops** — the home-page **Drops & IDs** playlist: add a clip (uploading the MP3), rename, reorder, hide and delete.
 - **Songs** — full tracks with title, artist, optional cover image and a public player in the home listening section.
@@ -191,6 +195,7 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 - **Videos** — uploaded MP4/WebM clips with title, description and optional thumbnail, published in the home **Videos** section.
 - **Radio** — the station name, tagline, stream URL, now playing text, logo and an on-air switch for `radio.html`.
 - **Users** — everyone who has registered on the site, with email, full name and joining date, plus suspend and restore.
+- **Analytics** — traffic, music, download, video, user and content statistics with a chart and date filters. Read-only; see the section below.
 
 Changes appear on the public site within a minute — no code edit or redeploy.
 
@@ -213,7 +218,7 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 - Sign in at `https://<your-site>/admin.html`, then choose the **Drops**, **Songs**, **Photos**, **Videos** or **Radio** tab.
 - **Drops → Add a clip** uploads an MP3 to the `drops` bucket and publishes it at the end of the playlist. MP3 only, 10 MB maximum — clips of 5–15 seconds work best.
 - The arrow buttons change the order, **Rename** edits the title inline, **Hide** removes a clip from the player without deleting it.
-- **Songs → Add a song** uploads audio to the `songs` bucket (MP3 up to 25 MB) and an optional cover to `photos`. The home player shows the cover, title, artist and play/pause controls.
+- **Songs → Add a song** uploads audio to the `songs` bucket (MP3 up to 25 MB) and an optional cover to `photos`. The home player shows the cover, title, artist and play/pause controls. Every published song that is stored in Supabase also gets a **Download** button on the public player.
 - **Photos → Add a photo** uploads an image to the `photos` bucket (JPG, PNG or WebP up to 8 MB) and adds it to the portfolio gallery.
 - **Videos → Add a video** uploads an MP4 or WebM file to the `videos` bucket (up to 50 MB) and an optional thumbnail to `photos`. The home **Videos** section shows cards with the thumbnail, title and description, and plays the selected clip in an HTML5 player.
 - **Radio → Station settings** edits the name, tagline, direct stream URL, now playing line and logo, and switches the station **on air**. The public `radio.html` page reads the same row. Turning off-air disables play and shows “Off air”.
@@ -245,11 +250,39 @@ How it behaves:
 
 Two limits worth knowing: passwords and tokens live in Supabase Auth and are never readable from this site, and **deleting** a registered account is not exposed in the dashboard because that requires the `service_role` key. Delete a user in **Authentication → Users** if removal is really needed; the profile row follows it through `on delete cascade`.
 
+### Analytics (Supabase)
+
+The **Analytics** tab shows what the site actually collected. Nothing is invented or backfilled: the first number appears the moment the first visitor event is stored.
+
+To switch analytics on:
+
+1. Open **SQL Editor** in the Supabase dashboard, paste all of `supabase/analytics.sql` and click **Run**. It creates the `analytics_events` table with its two search indexes, the `analytics_set_slot()` trigger that fills the minute bucket and the UTC day, the unique de-duplication index, the two row-level-security policies and the column grants, and six read functions — `admin_analytics_summary`, `admin_analytics_series`, `admin_analytics_top`, `admin_analytics_pages`, `admin_analytics_downloads`, plus the `analytics_window_start` date helper they all share. It changes nothing in `drops`, `songs`, `photos`, `videos`, `radio_settings`, `profiles` or `admins`, and it is safe to re-run.
+2. Press **Refresh** on the Analytics tab. No code change, no redeploy is needed — `js/analytics.js` is already included on every public page and starts posting events as soon as the table exists.
+3. Nothing else. There is no key to add, no policy to tick in the dashboard and no Edge Function to deploy. The `service_role` key is not used anywhere in this repository.
+
+What the tab shows, once data exists:
+
+- **Overview** — twelve cards: unique visitors, page views, total plays, song plays, drop plays, radio listens, downloads, songs downloaded, video views, photos opened, new sign-ups and registered users, for Today, Last 7 days, Last 30 days or All time. Visitors, page views, total plays, downloads and video views each carry a delta against the previous window of the same length (no delta for All time, because there is no comparable window). A line under the cards states the date collection began and when the newest event arrived, so you can see exactly how far back the data goes.
+- **Trend** — one bar per hour (Today), per day (7 and 30 days) or per month (All time), switchable between unique visitors, page views, plays, downloads, video views and sign-ups. Hover or tap a bar for the exact figure.
+- **Most visited pages**, **most played songs**, **recently played songs**, **most downloaded songs** with the download history (what, from which page, when), **most watched videos** and **most played clips**, and **new sign-ups by month** with the current content totals (songs, photos, videos, drops — published and total).
+
+How counting works, and its limits:
+
+- `js/analytics.js` writes one row per event into `analytics_events` using the public **publishable** key. There is no IP address, no user-agent string, no cookie and no fingerprint. The "visitor" is a random id kept in that browser's `localStorage`, so the same person on a phone and a laptop counts as two visitors, and someone who clears their storage counts again later.
+- A refresh does not make a new visitor and does not make a second page view. Events are ignored client-side for 60 seconds per (kind, page, target) and the database has a unique index on the same columns plus a minute bucket, so a rapid reload or a duplicated script tag cannot inflate the numbers. "Unique visitors" per page is `count(distinct visitor_id)`.
+- The same 60-second rule applies to every play event, so a "play" here means "started at least a minute after the last start of the same item". Pausing a song and pressing play again within a minute is one play; doing it after two minutes is two. Clip plays, video views and radio listens work the same way, so these are start counts rather than completed listens.
+- If `navigator.doNotTrack` is `1`, the tracker sends nothing at all. Visitors who opted out are simply absent from the charts.
+- Only an admin can read the events. Anonymous and signed-in-but-not-admin requests are refused by row-level security, and every read goes through a `security definer` function that re-checks `public.is_admin()` and raises `42501` if it fails. The public can insert events and nothing else — the column grant lists only `kind`, `page`, `target` and `visitor_id`, so they cannot read, update or delete rows, set the timestamp or pick the id.
+- Data is kept in one table with no automatic purge, and no limit is imposed on how far back it goes. Rows are small; if the table ever grows large for your plan, delete old rows from the Supabase table editor or add a scheduled cleanup.
+- Sign-ups and content totals are read from the existing `profiles`, `songs`, `photos`, `videos` and `drops` tables inside the same report function as the event counts. That function queries all of them in one pass, so if any one of those tables is missing the whole Analytics tab reports the migration as missing rather than showing partial numbers. `supabase/schema.sql` and `supabase/accounts.sql` must already be applied before `supabase/analytics.sql` will produce a populated dashboard.
+
+The tracker is loaded on all 15 public pages. `admin.html` is the only page without it, so your own dashboard visits never appear in the numbers. The sign-in and account pages do send a plain page view — they cannot play media, so no plays or downloads come from them.
+
 ### Security notes
 
 - The **publishable** key (formerly anon) in `js/supabase.js` is public by design. Every write is checked by row-level security against the `admins` table.
 - **Never** put the `service_role` key in this repository or in the browser. It bypasses all rules.
-- To revoke someone's access, delete their row from `public.admins`.
+- To revoke someone's access, delete their row from `public.admins`. Analytics follows the same row: an account that is not in `admins` gets a `42501` from every report function, so removing an admin also removes their access to the numbers.
 - Free Supabase projects pause after a period of inactivity. While paused, the player falls back to the built-in clips and the dashboard cannot sign in; open the Supabase dashboard to wake it. Check the current free-tier limits before relying on storage for a large library.
 
 ### If something breaks
@@ -271,6 +304,12 @@ Two limits worth knowing: passwords and tokens live in Supabase Auth and are nev
 | Confirmation or reset link opens the wrong site | **Site URL** or the redirect allowlist in **Authentication → URL Configuration** does not match the deployed address |
 | Users tab says it could not load users | Run `supabase/accounts.sql`. If it still fails, the signed-in account is not in the `admins` allowlist |
 | Profile picture upload rejected | `accounts.sql` creates the `avatars` bucket — if it is missing the upload fails. Also check the file is JPG, PNG or WebP and under 5 MB |
+| Analytics tab says the tables are not in this project yet | `supabase/analytics.sql` has not been run — `analytics_events` does not exist. Run it, then press **Refresh** |
+| Analytics tab shows an "allowlist" message | The signed-in account has no `admins` row. Run `schema.sql` again to add it |
+| Every page view logs one 404 in the browser console | Expected until `supabase/analytics.sql` is applied: the tracker posts to a table that is not there yet. It disables itself for that visitor's session and stops retrying, so it is exactly one failed request per session, not one per page |
+| Analytics numbers stay at zero after the SQL runs | No visitor has loaded a page since. The tracker counts from now on — nothing before the migration can be recovered. Open the site in another browser to test |
+| Downloads stay at zero | Downloads are counted when a visitor presses a song's **Download** button on the public player. Songs seeded from `assets/audio/` have no download button; only Supabase-hosted songs do |
+| Chart looks empty on a quiet day | Bars are drawn to the widest container width and re-measured on resize. Rotate the phone or press **Refresh**; a window that was 0 px wide when the tab first opened re-renders on the next resize |
 
 ---
 
@@ -408,6 +447,7 @@ This build deliberately avoids inventing facts. Before publishing, review these 
 - **Social handles** need verification (see above).
 - **The contact form** delivers through Formspree to `jamixproug@gmail.com`. Confirm that inbox is monitored, that Formspree notifications are not caught by spam filters, and that the free-plan quota suits the site's traffic.
 - **The email address and WhatsApp number** should be confirmed as the official booking channels.
+- **The analytics dashboard reports only what the site itself collected.** There is no seeded or historical data: until `supabase/analytics.sql` has been run and a visitor has loaded a page, every figure is zero and the tab says so. Counts are first-party and approximate by design (one random id per browser, no IP address), so they are not comparable to Google Analytics or any console metric.
 
 Anything you add later — reviews, prices, client names, statistics — should be accurate and have permission to be published.
 
@@ -483,7 +523,7 @@ Run through these before and after publishing:
 - [ ] Keyboard focus is visible throughout, including on the cream form card.
 - [ ] `/admin.html` shows the setup checklist while Supabase is unconfigured, and the sign-in form once it is.
 - [ ] Signing in with an allowlisted account lists the clips; an account without an `admins` row is refused and signed out.
-- [ ] The Drops, Songs, Photos, Videos, Radio and Users tabs switch cleanly and keep the layout intact on a phone.
+- [ ] The Drops, Songs, Photos, Videos, Radio, Users and Analytics tabs switch cleanly and keep the layout intact on a phone.
 - [ ] Adding, renaming, hiding, reordering and deleting a clip all survive a page reload and show on the home player.
 - [ ] Uploading a song shows progress, then the song appears in the home player with cover, title, artist and working play/pause.
 - [ ] Uploading a photo shows progress, then the photo appears in the portfolio under **Uploads** and opens in the lightbox.
@@ -509,6 +549,15 @@ Run through these before and after publishing:
 - [ ] The **Users** tab lists each account with email, full name and joining date, marks admin rows, and suspend/restore both ask for confirmation and survive a reload.
 - [ ] A suspended account cannot edit its profile; the sign-in page explains the suspension rather than signing it in.
 - [ ] An anonymous request to `/rest/v1/profiles` is refused, and no password, token or `service_role` key appears in the repository or the browser console.
+- [ ] After `supabase/analytics.sql`, loading a public page sends one `POST /rest/v1/analytics_events` that returns 204, and the Analytics tab shows that visit.
+- [ ] Reloading the same page twice inside a minute does not add a second page view or a second visitor.
+- [ ] The **Analytics** tab renders 12 overview cards, the trend chart and every ranked list, and **Today / Last 7 days / Last 30 days / All time** each change the numbers without a page reload.
+- [ ] Switching the chart metric (Visitors, Page views, Plays, Downloads, Video views, Sign-ups) draws new bars without extra network calls; hovering or tapping a bar names the bucket and the exact figure.
+- [ ] Playing a song, a drop or the radio, opening a photo, watching a video and pressing **Download** each add one row of the right kind — visible in the matching ranked list, or in the overview cards for radio listens.
+- [ ] A song's **Download** button saves the MP3 as a file rather than opening it in a tab.
+- [ ] With `navigator.doNotTrack` set to `1`, no analytics request leaves the browser at all.
+- [ ] An anonymous `GET /rest/v1/analytics_events` is refused, and an `UPDATE` or `DELETE` on it is refused; only an admin sees the Analytics tab contents.
+- [ ] `admin.html` itself sends no analytics request.
 
 ---
 
@@ -516,10 +565,10 @@ Run through these before and after publishing:
 
 - **No build step.** HTML, CSS and JS are served as written.
 - **Relative paths.** All local links are relative, so the site works at a domain root or a subpath.
-- **Fonts.** Google Fonts is the only external request on public pages (plus Supabase reads for the playlist when configured). If it is blocked, the site falls back to system fonts and remains usable.
+- **Fonts.** Google Fonts is the only external request on public pages (plus Supabase for the playlist reads and, once `analytics.sql` is applied, one analytics write per visitor action when configured). If it is blocked, the site falls back to system fonts and remains usable.
 - **Images.** WebP is used where a `<picture>` element is present, with a JPG fallback for older browsers.
 - **Accessibility.** Skip link, semantic landmarks, visible focus styles, labelled form fields, error messages announced via live regions, keyboard-operable filters and lightbox, `prefers-reduced-motion` support.
-- **No analytics or tracking** is installed. Add analytics only with the owner's consent and, where required, an appropriate cookie notice.
+- **First-party analytics only.** `js/analytics.js` posts events straight into your own Supabase table. There is no third-party tracker, no advertising pixel, no cookie banner requirement from this site, no IP address collected and no cross-site identifier. The visitor id is a random value in that browser's `localStorage`. `navigator.doNotTrack` is honoured, so a visitor who opted out sends nothing. Add a third-party analytics service only with the owner's consent.
 - **No site backend of its own.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
 - **Media data.** Drops, songs, photos and videos live in Supabase (Postgres); audio, images and videos added through the dashboard live in the `drops`, `songs`, `photos` and `videos` Storage buckets. Video thumbnails and the radio logo are stored in the `photos` bucket. The live radio settings live in the single-row `radio_settings` table. All writes are gated by row-level security. Public pages only ever read published rows and the public station row.
 - **Uploads without the SDK.** File uploads use `XMLHttpRequest` to the Storage REST endpoint so the dashboard can show real progress; reads, sign-in and row writes use the Supabase client. One shared client is created in `admin.js` from `js/supabase.js`.

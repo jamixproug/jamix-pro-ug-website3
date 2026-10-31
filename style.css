@@ -1559,12 +1559,19 @@ body.nav-open .mobile-nav__panel { transform: none; }
   list-style: none;
 }
 
-.song-card { margin: 0; }
+.song-card {
+  margin: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
 
 .song-card__btn {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   padding: 10px;
   border: 1px solid var(--line);
@@ -1582,6 +1589,27 @@ body.nav-open .mobile-nav__panel { transform: none; }
 }
 
 .song-card.is-active .song-card__btn { border-color: var(--gold-line); }
+
+.song-card__download {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(4, 9, 18, 0.45);
+  color: var(--muted);
+  transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.song-card__download:hover,
+.song-card__download:focus-visible {
+  border-color: var(--gold-line);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--gold-light);
+}
+
+.song-card__download svg { width: 16px; height: 16px; }
 
 .song-card__cover {
   flex: none;

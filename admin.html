@@ -122,6 +122,7 @@
         <button class="admin-tab" id="tab-videos" type="button" role="tab" data-tab="videos" aria-selected="false" aria-controls="panel-videos" tabindex="-1">Videos</button>
         <button class="admin-tab" id="tab-radio" type="button" role="tab" data-tab="radio" aria-selected="false" aria-controls="panel-radio" tabindex="-1">Radio</button>
         <button class="admin-tab" id="tab-users" type="button" role="tab" data-tab="users" aria-selected="false" aria-controls="panel-users" tabindex="-1">Users</button>
+        <button class="admin-tab" id="tab-analytics" type="button" role="tab" data-tab="analytics" aria-selected="false" aria-controls="panel-analytics" tabindex="-1">Analytics</button>
       </div>
 
       <div class="admin-grid" id="panel-drops" data-panel="drops" role="tabpanel" aria-labelledby="tab-drops">
@@ -350,6 +351,97 @@
             Suspending an account blocks sign-in and profile edits until you restore it. Accounts cannot be
             deleted from this page — remove them from Supabase Authentication if that is really needed.
           </p>
+        </section>
+      </div>
+
+      <div class="admin-grid admin-grid--analytics" id="panel-analytics" data-panel="analytics" role="tabpanel" aria-labelledby="tab-analytics" hidden>
+        <section class="admin-card admin-card--span" aria-labelledby="analytics-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-title">Overview</h2>
+            <div class="admin-tools">
+              <div class="admin-pills" role="group" aria-label="Date range">
+                <button class="admin-pill" type="button" data-range="1" aria-pressed="false">Today</button>
+                <button class="admin-pill" type="button" data-range="7" aria-pressed="false">Last 7 days</button>
+                <button class="admin-pill is-active" type="button" data-range="30" aria-pressed="true">Last 30 days</button>
+                <button class="admin-pill" type="button" data-range="0" aria-pressed="false">All time</button>
+              </div>
+              <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-analytics-refresh>Refresh</button>
+            </div>
+          </div>
+          <p class="admin-hint">
+            Every figure below is counted from events this site actually recorded. Nothing is estimated or
+            backfilled, so a range with no traffic shows zero.
+          </p>
+          <p class="admin-empty" data-analytics-empty hidden>Nothing recorded in this range yet.</p>
+          <div class="admin-stats" data-analytics-stats role="list" aria-label="Key statistics"></div>
+          <p class="admin-hint admin-hint--foot" data-analytics-note hidden></p>
+        </section>
+
+        <section class="admin-card admin-card--span" aria-labelledby="analytics-chart-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-chart-title">Trend</h2>
+            <div class="admin-pills" role="group" aria-label="Chart metric">
+              <button class="admin-pill is-active" type="button" data-metric="visitors" aria-pressed="true">Visitors</button>
+              <button class="admin-pill" type="button" data-metric="page_views" aria-pressed="false">Page views</button>
+              <button class="admin-pill" type="button" data-metric="plays" aria-pressed="false">Plays</button>
+              <button class="admin-pill" type="button" data-metric="downloads" aria-pressed="false">Downloads</button>
+              <button class="admin-pill" type="button" data-metric="video_views" aria-pressed="false">Video views</button>
+              <button class="admin-pill" type="button" data-metric="signups" aria-pressed="false">Sign-ups</button>
+            </div>
+          </div>
+          <div class="admin-chart" data-analytics-chart></div>
+          <p class="admin-chart__caption" data-analytics-caption>Hover or tap a bar for the exact number.</p>
+        </section>
+
+        <section class="admin-card" aria-labelledby="analytics-pages-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-pages-title">Most visited pages</h2>
+          </div>
+          <p class="admin-empty" data-analytics-pages-empty hidden>No page views in this range.</p>
+          <ul class="admin-rank" data-analytics-pages aria-label="Most visited pages"></ul>
+        </section>
+
+        <section class="admin-card" aria-labelledby="analytics-music-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-music-title">Music</h2>
+          </div>
+          <h3 class="admin-subtitle">Most played songs</h3>
+          <p class="admin-empty" data-analytics-songs-empty hidden>No song plays in this range.</p>
+          <ul class="admin-rank" data-analytics-songs aria-label="Most played songs"></ul>
+          <h3 class="admin-subtitle">Recently played</h3>
+          <ul class="admin-rank" data-analytics-recent aria-label="Recently played songs"></ul>
+        </section>
+
+        <section class="admin-card" aria-labelledby="analytics-downloads-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-downloads-title">Downloads</h2>
+          </div>
+          <h3 class="admin-subtitle">Most downloaded</h3>
+          <p class="admin-empty" data-analytics-downloads-empty hidden>No downloads recorded in this range.</p>
+          <ul class="admin-rank" data-analytics-downloads aria-label="Most downloaded songs"></ul>
+          <h3 class="admin-subtitle">Download history</h3>
+          <ul class="admin-log" data-analytics-log aria-label="Recent downloads"></ul>
+        </section>
+
+        <section class="admin-card" aria-labelledby="analytics-video-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-video-title">Video and clips</h2>
+          </div>
+          <h3 class="admin-subtitle">Most watched videos</h3>
+          <p class="admin-empty" data-analytics-videos-empty hidden>No video views in this range.</p>
+          <ul class="admin-rank" data-analytics-videos aria-label="Most watched videos"></ul>
+          <h3 class="admin-subtitle">Drop player</h3>
+          <ul class="admin-rank" data-analytics-clips aria-label="Most played drops"></ul>
+        </section>
+
+        <section class="admin-card" aria-labelledby="analytics-accounts-title">
+          <div class="admin-card__head">
+            <h2 id="analytics-accounts-title">Accounts and content</h2>
+          </div>
+          <h3 class="admin-subtitle">Registrations per month</h3>
+          <ul class="admin-rank" data-analytics-months aria-label="Registrations per month"></ul>
+          <h3 class="admin-subtitle">Library</h3>
+          <div class="admin-stats admin-stats--tight" data-analytics-content role="list" aria-label="Uploaded content"></div>
         </section>
       </div>
 

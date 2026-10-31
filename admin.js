@@ -61,6 +61,27 @@
   const usersListEl = $("[data-users-list]");
   const usersEmptyEl = $("[data-users-empty]");
   const usersRefresh = $("[data-users-refresh]");
+  const analyticsStatsEl = $("[data-analytics-stats]");
+  const analyticsContentEl = $("[data-analytics-content]");
+  const analyticsEmptyEl = $("[data-analytics-empty]");
+  const analyticsNoteEl = $("[data-analytics-note]");
+  const analyticsChartEl = $("[data-analytics-chart]");
+  const analyticsCaptionEl = $("[data-analytics-caption]");
+  const analyticsRefresh = $("[data-analytics-refresh]");
+  const rangeButtons = $$("[data-range]");
+  const metricButtons = $$("[data-metric]");
+  const pagesListEl = $("[data-analytics-pages]");
+  const pagesEmptyEl = $("[data-analytics-pages-empty]");
+  const songsListEl = $("[data-analytics-songs]");
+  const songsEmptyEl = $("[data-analytics-songs-empty]");
+  const recentListEl = $("[data-analytics-recent]");
+  const downloadsListEl = $("[data-analytics-downloads]");
+  const downloadsEmptyEl = $("[data-analytics-downloads-empty]");
+  const downloadLogEl = $("[data-analytics-log]");
+  const videosListEl = $("[data-analytics-videos]");
+  const videosEmptyEl = $("[data-analytics-videos-empty]");
+  const clipsListEl = $("[data-analytics-clips]");
+  const monthsListEl = $("[data-analytics-months]");
 
   const AUDIO_MAX = 25 * 1024 * 1024;
   const IMAGE_MAX = 8 * 1024 * 1024;
@@ -81,6 +102,13 @@
   let users = [];
   let adminIds = [];
   let usersLoaded = false;
+  let analyticsData = null;
+  let analyticsLoaded = false;
+  let analyticsLoading = false;
+  let analyticsRange = 30;
+  let analyticsMetric = "visitors";
+  let analyticsPending = false;
+  let analyticsError = false;
   let currentUserId = "";
   let activePanel = "drops";
   let busy = false;
@@ -192,7 +220,7 @@
 
   /* ---------- Rendering ---------- */
   function paintCounts() {
-    if (activePanel === "radio" || activePanel === "users") return;
+    if (activePanel === "radio" || activePanel === "users" || activePanel === "analytics") return;
     const list =
       activePanel === "songs" ? songs
         : activePanel === "photos" ? photos
@@ -1731,6 +1759,576 @@
     });
   }
 
+  /* ---------- Analytics ---------- */
+  const METRICS = {
+    visitors: { label: "unique visitors", source: "events", key: "visitors" },
+    page_views: { label: "page views", source: "events", key: "page_views" },
+    plays: { label: "plays", source: "events", key: "plays" },
+    downloads: { label: "downloads", source: "events", key: "downloads" },
+    video_views: { label: "video views", source: "events", key: "video_views" },
+    signups: { label: "sign-ups", source: "signups", key: "signups" }
+  };
+
+  function fmtInt(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toLocaleString("en-GB") : "0";
+  }
+
+  function formatMoment(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function pageLabel(value) {
+    const text = String(value || "");
+    if (text === "" || text === "/") return "/ (home)";
+    return text;
+  }
+
+  function bucketLabel(bucket, grain) {
+    const text = String(bucket || "");
+    if (grain === "hour") return text.slice(11, 16);
+    if (grain === "month") {
+      const date = new Date(text + "-01T00:00:00Z");
+      if (Number.isNaN(date.getTime())) return text;
+      return date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    }
+    const parts = text.split("-");
+    if (parts.length === 3) return parts[2] + "/" + parts[1];
+    return text;
+  }
+
+  function fullBucketLabel(bucket, grain) {
+    const text = String(bucket || "");
+    if (grain === "hour") return "Today " + text.slice(11, 16);
+    const date = new Date(text + (grain === "month" ? "-01T00:00:00Z" : "T00:00:00Z"));
+    if (Number.isNaN(date.getTime())) return text;
+    return date.toLocaleDateString("en-GB", {
+      weekday: grain === "month" ? "narrow" : "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  }
+
+  function difference(current, previous) {
+    if (previous === null || previous === undefined) return null;
+    return (Number(current) || 0) - (Number(previous) || 0);
+  }
+
+  function statCard(label, valueText, delta) {
+    const card = document.createElement("div");
+    card.className = "admin-stat";
+    card.setAttribute("role", "listitem");
+
+    const name = document.createElement("span");
+    name.className = "admin-stat__label";
+    name.textContent = label;
+    card.appendChild(name);
+
+    const value = document.createElement("b");
+    value.className = "admin-stat__value";
+    value.textContent = valueText;
+    card.appendChild(value);
+
+    if (delta !== null && delta !== undefined && delta !== 0) {
+      const change = document.createElement("span");
+      change.className = "admin-stat__delta " + (delta > 0 ? "is-up" : "is-down");
+      change.textContent = (delta > 0 ? "+" : "−") + fmtInt(Math.abs(delta));
+      change.title = "Against the previous window of the same length.";
+      card.appendChild(change);
+    }
+    return card;
+  }
+
+  function renderStats() {
+    if (!analyticsStatsEl) return;
+    analyticsStatsEl.textContent = "";
+    const summary = analyticsData && analyticsData.summary;
+    if (!summary) return;
+
+    const totals = summary.totals || {};
+    const before = summary.previous || {};
+    const usersInfo = summary.users || {};
+
+    [
+      ["Unique visitors", fmtInt(totals.visitors), difference(totals.visitors, before.visitors)],
+      ["Page views", fmtInt(totals.page_views), difference(totals.page_views, before.page_views)],
+      ["Total plays", fmtInt(totals.media_plays), difference(totals.media_plays, before.media_plays)],
+      ["Song plays", fmtInt(totals.song_plays), null],
+      ["Drop plays", fmtInt(totals.clip_plays), null],
+      ["Radio listens", fmtInt(totals.radio_plays), null],
+      ["Downloads", fmtInt(totals.downloads), difference(totals.downloads, before.downloads)],
+      ["Songs downloaded", fmtInt(totals.download_songs), null],
+      ["Video views", fmtInt(totals.video_views), difference(totals.video_views, before.video_views)],
+      ["Photos opened", fmtInt(totals.photo_views), null],
+      ["New sign-ups", fmtInt(usersInfo.new), null],
+      ["Registered users", fmtInt(usersInfo.total), null]
+    ].forEach(function (item) {
+      analyticsStatsEl.appendChild(statCard(item[0], item[1], item[2]));
+    });
+  }
+
+  function renderContent() {
+    if (!analyticsContentEl) return;
+    analyticsContentEl.textContent = "";
+    const content = analyticsData && analyticsData.summary && analyticsData.summary.content;
+    if (!content) return;
+
+    [
+      ["Songs", content.songs, content.songs_published],
+      ["Photos", content.photos, content.photos_published],
+      ["Videos", content.videos, content.videos_published],
+      ["Drops", content.drops, content.drops_published]
+    ].forEach(function (item) {
+      const card = statCard(item[0], fmtInt(item[1]) + " total", null);
+      const sub = document.createElement("span");
+      sub.className = "admin-stat__note";
+      sub.textContent = fmtInt(item[2]) + " published";
+      card.appendChild(sub);
+      analyticsContentEl.appendChild(card);
+    });
+  }
+
+  function renderNote() {
+    if (!analyticsNoteEl) return;
+    const summary = analyticsData && analyticsData.summary;
+    const allTime = analyticsData && analyticsData.allTime && analyticsData.allTime.totals;
+    const totals = allTime || (summary && summary.totals) || {};
+    if (!totals.first_event) {
+      analyticsNoteEl.hidden = false;
+      analyticsNoteEl.textContent =
+        "No events have been recorded yet. The tracker counts from the moment a visitor loads a page, so " +
+        "the numbers build from today onward — nothing before this point can be recovered.";
+      return;
+    }
+    analyticsNoteEl.hidden = false;
+    analyticsNoteEl.textContent =
+      "Collection began on " + formatDay(totals.first_event) + ". The most recent event is " +
+      formatMoment(totals.last_event) + " in your local time. Every figure is counted from real visits only.";
+  }
+
+  function chartPoints() {
+    const series = analyticsData && analyticsData.series;
+    if (!series) return [];
+    const metric = METRICS[analyticsMetric] || METRICS.visitors;
+    const rows = series[metric.source] || [];
+    return rows.map(function (row) {
+      return { bucket: row.bucket, value: Number(row[metric.key]) || 0 };
+    });
+  }
+
+  function svgElement(name, attrs) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+    Object.keys(attrs || {}).forEach(function (key) {
+      node.setAttribute(key, String(attrs[key]));
+    });
+    return node;
+  }
+
+  function axisCeiling(max) {
+    if (max <= 4) return 4;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+    const steps = [1, 2, 2.5, 5, 10];
+    for (let i = 0; i < steps.length; i += 1) {
+      if (magnitude * steps[i] >= max) return magnitude * steps[i];
+    }
+    return magnitude * 10;
+  }
+
+  function setCaption(text) {
+    if (analyticsCaptionEl) analyticsCaptionEl.textContent = text;
+  }
+
+  function renderChart() {
+    if (!analyticsChartEl) return;
+    analyticsChartEl.textContent = "";
+
+    const grain = (analyticsData && analyticsData.series && analyticsData.series.grain) || "day";
+    const points = chartPoints();
+    const metric = METRICS[analyticsMetric] || METRICS.visitors;
+
+    if (!points.length) {
+      setCaption("No " + metric.label + " yet — there is nothing to chart for this range.");
+      return;
+    }
+
+    const width = Math.max(280, Math.round(analyticsChartEl.clientWidth || 640));
+    const height = 216;
+    const padLeft = 42;
+    const padRight = 10;
+    const padTop = 14;
+    const padBottom = 26;
+    const plotWidth = width - padLeft - padRight;
+    const plotHeight = height - padTop - padBottom;
+    const peak = points.reduce(function (max, point) {
+      return Math.max(max, point.value);
+    }, 0);
+    const ceiling = axisCeiling(peak || 1);
+
+    const svg = svgElement("svg", {
+      viewBox: "0 0 " + width + " " + height,
+      width: width,
+      height: height,
+      role: "img",
+      "aria-label": "Chart of " + metric.label + " by " + grain
+    });
+
+    for (let line = 0; line <= 4; line += 1) {
+      const y = padTop + (plotHeight / 4) * line;
+      const value = Math.round(ceiling - (ceiling / 4) * line);
+      svg.appendChild(svgElement("line", {
+        x1: padLeft, x2: width - padRight, y1: y, y2: y, class: "admin-chart__grid"
+      }));
+      const label = svgElement("text", {
+        x: padLeft - 8, y: y + 4, class: "admin-chart__tick", "text-anchor": "end"
+      });
+      label.textContent = value >= 1000 ? Math.round(value / 100) / 10 + "k" : String(value);
+      svg.appendChild(label);
+    }
+
+    const slot = plotWidth / points.length;
+    const barWidth = Math.max(2, Math.min(30, slot - 3));
+    const every = Math.max(1, Math.ceil(points.length / Math.max(3, Math.floor(plotWidth / 74))));
+
+    points.forEach(function (point, index) {
+      const x = padLeft + slot * index + (slot - barWidth) / 2;
+      const h = peak === 0 ? 0 : Math.round((point.value / ceiling) * plotHeight);
+      const y = padTop + plotHeight - Math.max(point.value > 0 ? 2 : 0, h);
+      const bar = svgElement("rect", {
+        x: x, y: y, width: barWidth, height: Math.max(point.value > 0 ? 2 : 0.6, padTop + plotHeight - y),
+        rx: 2, class: "admin-chart__bar"
+      });
+      const title = svgElement("title", {});
+      title.textContent = fullBucketLabel(point.bucket, grain) + " — " + fmtInt(point.value) + " " + metric.label;
+      bar.appendChild(title);
+      bar.addEventListener("mouseenter", function () {
+        setCaption(fullBucketLabel(point.bucket, grain) + ": " + fmtInt(point.value) + " " + metric.label);
+      });
+      bar.addEventListener("click", function () {
+        setCaption(fullBucketLabel(point.bucket, grain) + ": " + fmtInt(point.value) + " " + metric.label);
+      });
+      svg.appendChild(bar);
+
+      if (index % every === 0) {
+        const tick = svgElement("text", {
+          x: x + barWidth / 2,
+          y: height - 8,
+          class: "admin-chart__tick",
+          "text-anchor": "middle"
+        });
+        tick.textContent = bucketLabel(point.bucket, grain);
+        svg.appendChild(tick);
+      }
+    });
+
+    analyticsChartEl.appendChild(svg);
+    const total = points.reduce(function (sum, point) { return sum + point.value; }, 0);
+    setCaption(fmtInt(total) + " " + metric.label + " in this range, grouped by " + grain + ".");
+  }
+
+  function renderRank(listEl, emptyEl, rows, options) {
+    if (!listEl) return;
+    const config = options || {};
+    listEl.textContent = "";
+    if (emptyEl) emptyEl.hidden = rows.length > 0;
+
+    const max = rows.reduce(function (value, row) {
+      return Math.max(value, Number(config.value ? config.value(row) : row.count) || 0);
+    }, 0) || 1;
+
+    rows.forEach(function (row) {
+      const value = Number(config.value ? config.value(row) : row.count) || 0;
+      const item = document.createElement("li");
+      item.className = "admin-rank__item";
+
+      const main = document.createElement("span");
+      main.className = "admin-rank__main";
+      const label = document.createElement("span");
+      label.className = "admin-rank__label";
+      label.textContent = config.label ? config.label(row) : (row.target || "—");
+      label.title = label.textContent;
+      main.appendChild(label);
+
+      if (config.sub) {
+        const text = config.sub(row);
+        if (text) {
+          const sub = document.createElement("span");
+          sub.className = "admin-rank__sub";
+          sub.textContent = text;
+          main.appendChild(sub);
+        }
+      }
+
+      const bar = document.createElement("span");
+      bar.className = "admin-rank__bar";
+      const fill = document.createElement("i");
+      fill.style.width = Math.max(2, Math.round((value / max) * 100)) + "%";
+      bar.appendChild(fill);
+
+      const count = document.createElement("b");
+      count.className = "admin-rank__value";
+      count.textContent = fmtInt(value);
+
+      item.appendChild(main);
+      item.appendChild(bar);
+      item.appendChild(count);
+      listEl.appendChild(item);
+    });
+  }
+
+  function renderLogList(listEl, rows, labelFor, metaFor, timeFor) {
+    if (!listEl) return;
+    listEl.textContent = "";
+    if (!rows.length) {
+      const empty = document.createElement("li");
+      empty.className = "admin-log__empty";
+      empty.textContent = "Nothing recorded in this range.";
+      listEl.appendChild(empty);
+      return;
+    }
+    rows.forEach(function (row) {
+      const item = document.createElement("li");
+      item.className = "admin-log__item";
+      const title = document.createElement("b");
+      title.textContent = labelFor(row);
+      title.title = title.textContent;
+      const meta = document.createElement("span");
+      meta.textContent = metaFor(row);
+      const when = document.createElement("time");
+      when.textContent = timeFor(row);
+      item.appendChild(title);
+      item.appendChild(meta);
+      item.appendChild(when);
+      listEl.appendChild(item);
+    });
+  }
+
+  function renderAnalytics() {
+    if (analyticsError) {
+      // The status line already explains what is wrong, so the panel is
+      // cleared rather than filled with "nothing recorded yet" messages
+      // that would suggest real zeros.
+      [analyticsStatsEl, analyticsContentEl, analyticsChartEl, pagesListEl, songsListEl,
+        recentListEl, downloadsListEl, videosListEl, clipsListEl, monthsListEl, downloadLogEl]
+        .forEach(function (el) { if (el) el.textContent = ""; });
+      [analyticsEmptyEl, pagesEmptyEl, songsEmptyEl, downloadsEmptyEl, videosEmptyEl]
+        .forEach(function (el) { if (el) el.hidden = true; });
+      setCaption("Analytics data is unavailable for this account or project.");
+      return;
+    }
+
+    renderStats();
+    renderContent();
+    renderNote();
+    renderChart();
+
+    const data = analyticsData || {};
+    const totals = (data.summary && data.summary.totals) || {};
+    const allZero = !data.summary ||
+      ((Number(totals.page_views) || 0) +
+        (Number(totals.media_plays) || 0) +
+        (Number(totals.downloads) || 0) +
+        (Number(totals.video_views) || 0) +
+        (Number(totals.photo_views) || 0)) === 0;
+    if (analyticsEmptyEl) analyticsEmptyEl.hidden = !allZero;
+
+    renderRank(pagesListEl, pagesEmptyEl, data.pages || [], {
+      label: function (row) { return pageLabel(row.page); },
+      value: function (row) { return row.views; },
+      sub: function (row) {
+        return fmtInt(row.visitors) + " visitor" + (Number(row.visitors) === 1 ? "" : "s") +
+          " · last " + (formatMoment(row.last_at) || "—");
+      }
+    });
+
+    renderRank(songsListEl, songsEmptyEl, data.songsTop || [], {
+      sub: function (row) {
+        return fmtInt(row.visitors) + " listener" + (Number(row.visitors) === 1 ? "" : "s") +
+          " · last " + (formatMoment(row.last_at) || "—");
+      }
+    });
+    renderLogList(
+      recentListEl,
+      data.songsRecent || [],
+      function (row) { return row.target || "—"; },
+      function (row) { return fmtInt(row.count) + " play" + (Number(row.count) === 1 ? "" : "s") + " in range"; },
+      function (row) { return formatMoment(row.last_at); }
+    );
+    renderRank(downloadsListEl, downloadsEmptyEl, data.downloadsTop || [], {
+      sub: function (row) {
+        return fmtInt(row.visitors) + " downloader" + (Number(row.visitors) === 1 ? "" : "s");
+      }
+    });
+    renderRank(videosListEl, videosEmptyEl, data.videosTop || [], {
+      sub: function (row) {
+        return fmtInt(row.visitors) + " viewer" + (Number(row.visitors) === 1 ? "" : "s") +
+          " · last " + (formatMoment(row.last_at) || "—");
+      }
+    });
+    renderRank(clipsListEl, null, data.clipsTop || [], {
+      sub: function (row) {
+        return fmtInt(row.visitors) + " listener" + (Number(row.visitors) === 1 ? "" : "s");
+      }
+    });
+    renderRank(monthsListEl, null, (data.monthly && data.monthly.signups) || [], {
+      label: function (row) { return bucketLabel(row.bucket, "month"); },
+      value: function (row) { return row.signups; }
+    });
+    renderLogList(
+      downloadLogEl,
+      data.downloadLog || [],
+      function (row) { return row.target || "Unknown song"; },
+      function (row) { return "from " + pageLabel(row.page); },
+      function (row) { return formatMoment(row.at); }
+    );
+  }
+
+  function analyticsSetupMessage(error) {
+    const text = String((error && (error.message || error)) || "");
+    if (/42501|administrator/i.test(text)) {
+      return "This account is not on the analytics allowlist, so the reports stay empty.";
+    }
+    if (/could not find the function|does not exist|schema cache|PGRST202/i.test(text)) {
+      return "The analytics tables are not in this project yet. Run supabase/analytics.sql in the Supabase SQL editor, then press Refresh.";
+    }
+    return "The analytics report could not load. Check your connection and press Refresh.";
+  }
+
+  async function loadAnalytics() {
+    if (!client) return false;
+    // A range or refresh click that lands mid-flight is remembered and run
+    // once the current batch settles, so the pills never disagree with the data.
+    if (analyticsLoading) { analyticsPending = true; return false; }
+    analyticsPending = false;
+    analyticsLoading = true;
+    if (analyticsRefresh) analyticsRefresh.disabled = true;
+
+    const days = analyticsRange;
+    const grain = days === 1 ? "hour" : days === 0 ? "month" : "day";
+    const quiet = function (promise) {
+      return Promise.resolve(promise).then(
+        function (response) { return response || { data: null, error: null }; },
+        function (error) { return { data: null, error: error }; }
+      );
+    };
+
+    const requests = [
+      quiet(client.rpc("admin_analytics_summary", { window_days: days })),
+      quiet(client.rpc("admin_analytics_series", { window_days: days, grain: grain })),
+      quiet(client.rpc("admin_analytics_pages", { window_days: days, item_limit: 8 })),
+      quiet(client.rpc("admin_analytics_top", { event_kind: "song_play", window_days: days, item_limit: 8, sort_by: "count" })),
+      quiet(client.rpc("admin_analytics_top", { event_kind: "song_play", window_days: days, item_limit: 6, sort_by: "recent" })),
+      quiet(client.rpc("admin_analytics_top", { event_kind: "song_download", window_days: days, item_limit: 8, sort_by: "count" })),
+      quiet(client.rpc("admin_analytics_top", { event_kind: "video_view", window_days: days, item_limit: 8, sort_by: "count" })),
+      quiet(client.rpc("admin_analytics_top", { event_kind: "clip_play", window_days: days, item_limit: 8, sort_by: "count" })),
+      quiet(client.rpc("admin_analytics_downloads", { window_days: days, item_limit: 12 }))
+    ];
+
+    try {
+      const results = await Promise.all(requests);
+      analyticsError = results.some(function (response) { return !!response.error; });
+      const summary = results[0];
+      if (summary.error) {
+        analyticsData = null;
+        analyticsLoaded = false;
+        setStatus(analyticsSetupMessage(summary.error), "error");
+        renderAnalytics();
+        return false;
+      }
+      if (analyticsError) {
+        analyticsLoaded = false;
+        setStatus("Some analytics reports did not answer. Press Refresh to try again.", "error");
+        renderAnalytics();
+        return false;
+      }
+
+      analyticsData = {
+        summary: summary.data,
+        series: results[1].data,
+        pages: results[2].data,
+        songsTop: results[3].data,
+        songsRecent: results[4].data,
+        downloadsTop: results[5].data,
+        videosTop: results[6].data,
+        clipsTop: results[7].data,
+        downloadLog: results[8].data,
+        monthly: null,
+        allTime: null
+      };
+
+      if (days === 0) {
+        analyticsData.monthly = results[1].data;
+        analyticsData.allTime = summary.data;
+      } else {
+        const extra = await Promise.all([
+          quiet(client.rpc("admin_analytics_series", { window_days: 0, grain: "month" })),
+          quiet(client.rpc("admin_analytics_summary", { window_days: 0 }))
+        ]);
+        analyticsData.monthly = extra[0].data;
+        analyticsData.allTime = extra[1].data;
+      }
+
+      analyticsLoaded = true;
+      renderAnalytics();
+      return true;
+    } finally {
+      analyticsLoading = false;
+      if (analyticsRefresh) analyticsRefresh.disabled = false;
+      if (analyticsPending) {
+        analyticsPending = false;
+        loadAnalytics();
+      }
+    }
+  }
+
+  rangeButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      const next = Number(button.dataset.range);
+      if (next === analyticsRange) return;
+      analyticsRange = next;
+      rangeButtons.forEach(function (other) {
+        const active = other === button;
+        other.classList.toggle("is-active", active);
+        other.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      loadAnalytics();
+    });
+  });
+
+  metricButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      analyticsMetric = button.dataset.metric;
+      metricButtons.forEach(function (other) {
+        const active = other === button;
+        other.classList.toggle("is-active", active);
+        other.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      renderChart();
+    });
+  });
+
+  if (analyticsRefresh) {
+    analyticsRefresh.addEventListener("click", function () {
+      analyticsLoaded = false;
+      loadAnalytics();
+    });
+  }
+
+  let chartResizeTimer = 0;
+  window.addEventListener("resize", function () {
+    if (activePanel !== "analytics") return;
+    window.clearTimeout(chartResizeTimer);
+    chartResizeTimer = window.setTimeout(renderChart, 180);
+  });
+
   function showPanel(name) {
     activePanel = name;
     panels.forEach(function (panel) {
@@ -1741,7 +2339,9 @@
       button.setAttribute("aria-selected", active ? "true" : "false");
       button.tabIndex = active ? 0 : -1;
     });
-    if (countSummaryEl) countSummaryEl.hidden = name === "radio" || name === "users";
+    if (countSummaryEl) {
+      countSummaryEl.hidden = name === "radio" || name === "users" || name === "analytics";
+    }
     paintCounts();
     if (!client) return;
     if (name === "songs" && !songsLoaded) loadSongs();
@@ -1749,6 +2349,10 @@
     if (name === "videos" && !videosLoaded) loadVideos();
     if (name === "radio" && !radioLoaded) loadRadio();
     if (name === "users" && !usersLoaded) loadUsers();
+    if (name === "analytics") {
+      if (!analyticsLoaded) loadAnalytics();
+      else renderChart();
+    }
   }
 
   tabButtons.forEach(function (button) {

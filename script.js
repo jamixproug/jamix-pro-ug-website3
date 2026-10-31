@@ -27,6 +27,11 @@
   const $$ = (selector, scope) => Array.from((scope || document).querySelectorAll(selector));
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // First-party analytics. Does nothing unless js/analytics.js is on the page.
+  const track = (kind, target) => {
+    if (window.JAMIX_TRACK) window.JAMIX_TRACK.event(kind, target);
+  };
+
   const escapeHtml = (value) =>
     String(value == null ? "" : value)
       .replace(/&/g, "&amp;")
@@ -284,6 +289,7 @@
     }
     if (lightboxPrev) lightboxPrev.hidden = lightboxList.length < 2;
     if (lightboxNext) lightboxNext.hidden = lightboxList.length < 2;
+    track("photo_view", data.title || data.alt || "photo");
 
     const next = lightboxList[(lightboxIndex + 1) % lightboxList.length];
     if (next && next.dataset.full) {
@@ -1169,6 +1175,7 @@
       paintPlaying(true);
       const title = currentIndex >= 0 ? trackButtons[currentIndex].dataset.title : "clip";
       announce("Playing " + title + ".");
+      track("clip_play", title);
     });
 
     audio.addEventListener("pause", () => paintPlaying(false));
@@ -1320,6 +1327,26 @@
         button.appendChild(copy);
         button.appendChild(icon);
         item.appendChild(button);
+
+        const src = button.dataset.src;
+        if (/^https?:\/\//i.test(src)) {
+          const name = (String(button.dataset.title || "track")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "track").slice(0, 48);
+          const link = document.createElement("a");
+          link.className = "song-card__download";
+          link.href = src.split("?")[0] + "?download=" + encodeURIComponent(name + ".mp3");
+          link.download = name + ".mp3";
+          link.title = "Download " + button.dataset.title;
+          link.setAttribute("aria-label", "Download " + button.dataset.title);
+          link.innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" ' +
+            'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          link.addEventListener("click", () => track("song_download", button.dataset.title));
+          item.appendChild(link);
+        }
+
         fragment.appendChild(item);
       });
 
@@ -1376,6 +1403,7 @@
       paintPlaying();
       const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-song-play]") : null;
       announce("Playing " + (button ? button.dataset.title : "song") + ".");
+      if (button) track("song_play", button.dataset.title);
     });
 
     audio.addEventListener("pause", paintPlaying);
@@ -1610,6 +1638,7 @@
       paintActive();
       const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-video-play]") : null;
       announce("Playing " + (button ? button.dataset.title : "video") + ".");
+      if (button) track("video_view", button.dataset.title);
     });
 
     player.addEventListener("pause", () => {
@@ -1867,6 +1896,7 @@
         paintPlaying(true);
         toggle.setAttribute("aria-label", "Pause the live stream");
         setStatus("Live now — you are listening.", "live");
+        track("radio_play", (settings && settings.station_name) || "Live radio");
       });
 
       audio.addEventListener("pause", () => {
