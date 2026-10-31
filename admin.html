@@ -84,8 +84,8 @@
     <section class="admin-auth" data-auth hidden aria-labelledby="auth-title">
       <div class="admin-card admin-card--narrow">
         <p class="eyebrow">Restricted</p>
-        <h1 id="auth-title">Sign in to manage drops</h1>
-        <p class="admin-lede">Only accounts on the admin list can change the playlist.</p>
+        <h1 id="auth-title">Sign in to manage media</h1>
+        <p class="admin-lede">Only accounts on the admin list can change the site's media.</p>
         <form class="admin-form" data-login novalidate>
           <label class="admin-field">
             <span>Email</span>
@@ -119,6 +119,7 @@
         <button class="admin-tab" id="tab-drops" type="button" role="tab" data-tab="drops" aria-selected="true" aria-controls="panel-drops">Drops</button>
         <button class="admin-tab" id="tab-songs" type="button" role="tab" data-tab="songs" aria-selected="false" aria-controls="panel-songs" tabindex="-1">Songs</button>
         <button class="admin-tab" id="tab-photos" type="button" role="tab" data-tab="photos" aria-selected="false" aria-controls="panel-photos" tabindex="-1">Photos</button>
+        <button class="admin-tab" id="tab-videos" type="button" role="tab" data-tab="videos" aria-selected="false" aria-controls="panel-videos" tabindex="-1">Videos</button>
       </div>
 
       <div class="admin-grid" id="panel-drops" data-panel="drops" role="tabpanel" aria-labelledby="tab-drops">
@@ -223,10 +224,49 @@
         </section>
       </div>
 
+      <div class="admin-grid" id="panel-videos" data-panel="videos" role="tabpanel" aria-labelledby="tab-videos" hidden>
+        <section class="admin-card" aria-labelledby="video-add-title">
+          <h2 id="video-add-title">Add a video</h2>
+          <p class="admin-hint">Video files upload to the <code>videos</code> bucket; the thumbnail goes to <code>photos</code>.</p>
+          <form class="admin-form" data-video-add>
+            <label class="admin-field">
+              <span>Title</span>
+              <input name="title" maxlength="120" required placeholder="e.g. Silk Lounge recap">
+            </label>
+            <label class="admin-field">
+              <span>Description (optional)</span>
+              <textarea name="description" maxlength="500" rows="3" placeholder="e.g. A short recap from Saturday night."></textarea>
+            </label>
+            <label class="admin-field">
+              <span>Video file</span>
+              <input name="video" type="file" accept="video/mp4,video/webm,.mp4,.webm" required>
+            </label>
+            <label class="admin-field">
+              <span>Thumbnail (optional)</span>
+              <input name="thumbnail" type="file" accept="image/jpeg,image/png,image/webp">
+            </label>
+            <p class="admin-hint">MP4 or WebM up to 50 MB. Thumbnail JPG, PNG or WebP up to 8 MB. A thumbnail helps the cards load quickly.</p>
+            <button class="btn btn-gold admin-submit" type="submit" data-video-submit>Upload video</button>
+            <progress class="admin-progress" data-video-progress max="100" value="0" hidden></progress>
+          </form>
+        </section>
+
+        <section class="admin-card" aria-labelledby="video-list-title">
+          <div class="admin-card__head">
+            <h2 id="video-list-title">Videos</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-video-refresh>Refresh</button>
+          </div>
+          <p class="admin-empty" data-video-empty hidden>No videos yet. Add one on the left.</p>
+          <ol class="admin-list" data-video-list aria-label="Uploaded videos"></ol>
+        </section>
+      </div>
+
       <p class="admin-preview">
         <a class="link-arrow" href="index.html#music">Open the public player</a>
         <span class="admin-count__sep">·</span>
         <a class="link-arrow" href="portfolio.html">Open the public gallery</a>
+        <span class="admin-count__sep">·</span>
+        <a class="link-arrow" href="index.html#videos">Open the public videos</a>
       </p>
     </section>
   </main>

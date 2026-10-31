@@ -39,6 +39,7 @@
           <li><a href="about.html">About</a></li>
           <li><a href="services.html">Services</a></li>
           <li><a href="portfolio.html">Portfolio</a></li>
+          <li><a href="index.html#videos">Videos</a></li>
           <li><a href="blog.html">Blog</a></li>
           <li><a href="contact.html">Contact</a></li>
         </ul>
@@ -73,8 +74,9 @@
           <li><a href="about.html"><span>02</span>About</a></li>
           <li><a href="services.html"><span>03</span>Services</a></li>
           <li><a href="portfolio.html"><span>04</span>Portfolio</a></li>
-          <li><a href="blog.html"><span>05</span>Blog</a></li>
-          <li><a href="contact.html"><span>06</span>Contact</a></li>
+          <li><a href="index.html#videos"><span>05</span>Videos</a></li>
+          <li><a href="blog.html"><span>06</span>Blog</a></li>
+          <li><a href="contact.html"><span>07</span>Contact</a></li>
         </ul>
       </nav>
       <div class="mobile-nav__foot">
@@ -465,6 +467,32 @@
       </div>
     </section>
 
+    <!-- Videos -->
+    <section class="section section--videos" id="videos" aria-labelledby="videos-title">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <div class="section-head__copy">
+            <p class="eyebrow">Videos</p>
+            <h2 class="section-title" id="videos-title">The set, <span class="serif">on camera.</span></h2>
+            <p class="lede">Clips from sets, karaoke nights and events. Choose a video to play — nothing starts automatically.</p>
+          </div>
+          <span class="drops-count"><b data-videos-count>0</b> videos</span>
+        </div>
+
+        <div class="videos-panel" data-videos>
+          <div class="videos-player" data-videos-player-wrap hidden>
+            <div class="videos-player__head">
+              <span>Now playing</span>
+              <strong data-videos-now>Choose a video</strong>
+            </div>
+            <video class="videos-player__media" data-videos-player controls playsinline preload="none" aria-label="JAMIX PRO UG video player"></video>
+          </div>
+          <ol class="videos-list" data-videos-list aria-label="JAMIX PRO UG videos" hidden></ol>
+          <p class="videos-status" data-videos-status role="status" aria-live="polite">Loading videos…</p>
+        </div>
+      </div>
+    </section>
+
     <!-- Services preview -->
     <section class="section section--navy section--line" aria-labelledby="services-title">
       <div class="container">
@@ -710,6 +738,7 @@
             <a href="about.html">About us</a>
             <a href="services.html">Services</a>
             <a href="portfolio.html">Portfolio</a>
+            <a href="index.html#videos">Videos</a>
             <a href="blog.html">Blog</a>
             <a href="contact.html">Contact</a>
           </div>

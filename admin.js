@@ -45,17 +45,27 @@
   const photoSubmit = $("[data-photo-submit]");
   const photoProgress = $("[data-photo-progress]");
   const photoRefresh = $("[data-photo-refresh]");
+  const videoForm = $("[data-video-add]");
+  const videoListEl = $("[data-video-list]");
+  const videoEmptyEl = $("[data-video-empty]");
+  const videoSubmit = $("[data-video-submit]");
+  const videoProgress = $("[data-video-progress]");
+  const videoRefresh = $("[data-video-refresh]");
 
   const AUDIO_MAX = 25 * 1024 * 1024;
   const IMAGE_MAX = 8 * 1024 * 1024;
+  const VIDEO_MAX = 50 * 1024 * 1024;
   const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  const VIDEO_TYPES = ["video/mp4", "video/webm"];
 
   let client = null;
   let clips = [];
   let songs = [];
   let photos = [];
+  let videos = [];
   let songsLoaded = false;
   let photosLoaded = false;
+  let videosLoaded = false;
   let activePanel = "drops";
   let busy = false;
   let entering = false;
@@ -167,7 +177,10 @@
   /* ---------- Rendering ---------- */
   function paintCounts() {
     const list =
-      activePanel === "songs" ? songs : activePanel === "photos" ? photos : clips;
+      activePanel === "songs" ? songs
+        : activePanel === "photos" ? photos
+          : activePanel === "videos" ? videos
+            : clips;
     if (countTotalEl) countTotalEl.textContent = String(list.length);
     if (countPublishedEl) {
       countPublishedEl.textContent = String(list.filter(function (item) {
@@ -516,6 +529,23 @@
     return extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg";
   }
 
+  function isVideoFile(file) {
+    if (!file) return false;
+    const nameOk = /\.(mp4|webm)$/i.test(String(file.name || ""));
+    const typeOk = !file.type || VIDEO_TYPES.indexOf(file.type) !== -1;
+    return nameOk && typeOk;
+  }
+
+  function videoExtension(file) {
+    const name = String((file && file.name) || "").toLowerCase();
+    if (name.endsWith(".webm") || (file && file.type === "video/webm")) return "webm";
+    return "mp4";
+  }
+
+  function videoContentType(file) {
+    return videoExtension(file) === "webm" ? "video/webm" : "video/mp4";
+  }
+
   function objectPath(filePath, bucket) {
     const marker = "/storage/v1/object/public/" + bucket + "/";
     const value = String(filePath || "");
@@ -694,6 +724,41 @@
     });
   }
 
+  function renderVideos() {
+    if (!videoListEl) return;
+    videoListEl.textContent = "";
+    if (videoEmptyEl) videoEmptyEl.hidden = videos.length > 0;
+    paintCounts();
+
+    videos.forEach(function (video, index) {
+      const tag = document.createElement("span");
+      tag.className = "admin-tag " + (video.is_published ? "admin-tag--live" : "admin-tag--hidden");
+      tag.textContent = video.is_published ? "Live" : "Hidden";
+
+      const note = document.createElement("span");
+      note.textContent = video.description || displayName(video.video_path);
+
+      const edit = actionButton("Edit " + video.title, "M4 20h4L19 9l-4-4L4 16v4ZM14 6l4 4");
+      edit.dataset.action = "edit";
+
+      const toggle = actionButton(
+        (video.is_published ? "Unpublish " : "Publish ") + video.title,
+        video.is_published
+          ? "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+          : "M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A9.8 9.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.2 3.1M6.2 6.2A16.6 16.6 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 4-.8"
+      );
+      toggle.dataset.action = "toggle";
+
+      const remove = actionButton("Delete " + video.title, "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6", "admin-icon-btn--danger");
+      remove.dataset.action = "delete";
+
+      const built = makeRow(index, video.title, [tag, note], [edit, toggle, remove]);
+      built.row.dataset.id = video.id;
+      if (!video.is_published) built.row.classList.add("is-hidden");
+      videoListEl.appendChild(built.row);
+    });
+  }
+
   async function loadSongs() {
     const response = await client
       .from("songs")
@@ -733,6 +798,27 @@
     photos = response.data || [];
     photosLoaded = true;
     renderPhotos();
+    return true;
+  }
+
+  async function loadVideos() {
+    const response = await client
+      .from("videos")
+      .select("id,title,description,video_path,thumbnail_path,sort_order,is_published,created_at")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (response.error) {
+      videosLoaded = false;
+      videos = [];
+      renderVideos();
+      setStatus("Could not load videos: " + response.error.message, "error");
+      return false;
+    }
+
+    videos = response.data || [];
+    videosLoaded = true;
+    renderVideos();
     return true;
   }
 
@@ -868,6 +954,73 @@
     titleInput.select();
   }
 
+  function startVideoEdit(video, row) {
+    const body = row.querySelector(".admin-row__body");
+    if (!body || body.querySelector(".admin-rename")) return;
+    body.textContent = "";
+
+    const form = document.createElement("form");
+    form.className = "admin-rename admin-rename--fields";
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.value = video.title;
+    titleInput.maxLength = 120;
+    titleInput.setAttribute("aria-label", "Video title for " + video.title);
+
+    const descriptionInput = document.createElement("textarea");
+    descriptionInput.value = video.description || "";
+    descriptionInput.maxLength = 500;
+    descriptionInput.rows = 2;
+    descriptionInput.setAttribute("aria-label", "Description for " + video.title);
+
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "btn btn-gold btn-sm";
+    save.textContent = "Save";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn-ghost btn-sm admin-btn-light";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", renderVideos);
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const nextTitle = titleInput.value.trim();
+      if (!nextTitle) {
+        titleInput.focus();
+        return;
+      }
+      if (busy) return;
+      busy = true;
+      save.disabled = true;
+      save.textContent = "Saving…";
+      try {
+        await updateRow("videos", video.id, {
+          title: nextTitle,
+          description: descriptionInput.value.trim() || null
+        });
+        await loadVideos();
+        setStatus("Saved “" + nextTitle + "”.");
+      } catch (error) {
+        setStatus(error.message || "Could not save the video.", "error");
+        save.disabled = false;
+        save.textContent = "Save";
+      } finally {
+        busy = false;
+      }
+    });
+
+    form.appendChild(titleInput);
+    form.appendChild(descriptionInput);
+    form.appendChild(save);
+    form.appendChild(cancel);
+    body.appendChild(form);
+    titleInput.focus();
+    titleInput.select();
+  }
+
   async function deleteSong(song) {
     const ok = window.confirm(
       'Delete "' + song.title + '"? The song is removed from the site and its files are deleted. This cannot be undone.'
@@ -899,6 +1052,31 @@
     await loadPhotos();
     if (fileRemoved) setStatus("Deleted “" + photo.title + "”.");
     else setStatus("Photo deleted, but its file could not be removed.", "error");
+  }
+
+  async function toggleVideo(video) {
+    await updateRow("videos", video.id, { is_published: !video.is_published });
+    await loadVideos();
+    setStatus(video.is_published ? "Video hidden from the site." : "Video published.");
+  }
+
+  async function deleteVideo(video) {
+    const ok = window.confirm(
+      'Delete "' + video.title + '"? The video is removed from the site and its files are deleted. This cannot be undone.'
+    );
+    if (!ok) return;
+
+    const response = await client.from("videos").delete().eq("id", video.id);
+    if (response.error) throw new Error(response.error.message);
+
+    const videoRemoved = await removeStored("videos", video.video_path);
+    const thumbRemoved = video.thumbnail_path
+      ? await removeStored("photos", video.thumbnail_path)
+      : true;
+
+    await loadVideos();
+    if (videoRemoved && thumbRemoved) setStatus("Deleted “" + video.title + "”.");
+    else setStatus("Video deleted, but a file could not be removed.", "error");
   }
 
   if (songForm) {
@@ -1101,6 +1279,118 @@
     });
   }
 
+  if (videoForm) {
+    videoForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (busy) return;
+
+      const titleInput = videoForm.querySelector('input[name="title"]');
+      const descriptionInput = videoForm.querySelector('textarea[name="description"]');
+      const videoInput = videoForm.querySelector('input[name="video"]');
+      const thumbInput = videoForm.querySelector('input[name="thumbnail"]');
+      const title = titleInput ? titleInput.value.trim() : "";
+      const description = descriptionInput ? descriptionInput.value.trim() : "";
+      const file = videoInput && videoInput.files ? videoInput.files[0] : null;
+      const thumbnail = thumbInput && thumbInput.files ? thumbInput.files[0] : null;
+
+      if (!title) {
+        setStatus("Give the video a title first.", "error");
+        if (titleInput) titleInput.focus();
+        return;
+      }
+      if (!file) {
+        setStatus("Choose an MP4 or WebM file to upload.", "error");
+        return;
+      }
+      if (!isVideoFile(file)) {
+        setStatus("That is not a supported video. Use MP4 or WebM.", "error");
+        return;
+      }
+      if (file.size > VIDEO_MAX) {
+        setStatus("That video is larger than 50 MB. Compress it and try again.", "error");
+        return;
+      }
+      if (thumbnail && !isImageFile(thumbnail)) {
+        setStatus("The thumbnail must be a JPG, PNG or WebP image.", "error");
+        return;
+      }
+      if (thumbnail && thumbnail.size > IMAGE_MAX) {
+        setStatus("The thumbnail is larger than 8 MB. Use a smaller image.", "error");
+        return;
+      }
+
+      busy = true;
+      videoForm.setAttribute("aria-busy", "true");
+      if (videoSubmit) {
+        videoSubmit.disabled = true;
+        videoSubmit.textContent = "Uploading…";
+      }
+      paintUploadProgress(videoProgress, 0);
+
+      const stamp = Date.now();
+      const videoPath = stamp + "-" + slugify(title) + "." + videoExtension(file);
+      const thumbPath = thumbnail
+        ? "video-thumbs/" + stamp + "-" + slugify(title) + "." + imageExtension(thumbnail)
+        : "";
+      let videoUploaded = false;
+      let thumbUploaded = false;
+
+      try {
+        await uploadObject("videos", videoPath, file, videoContentType(file), function (ratio) {
+          paintUploadProgress(videoProgress, thumbnail ? ratio * 88 : ratio * 100);
+          if (videoSubmit) {
+            videoSubmit.textContent = "Uploading " + (videoProgress ? videoProgress.value : 0) + "%…";
+          }
+        });
+        videoUploaded = true;
+
+        let thumbUrl = null;
+        if (thumbnail) {
+          await uploadObject("photos", thumbPath, thumbnail, imageContentType(thumbnail), function (ratio) {
+            paintUploadProgress(videoProgress, 88 + ratio * 12);
+            if (videoSubmit) {
+              videoSubmit.textContent = "Uploading " + (videoProgress ? videoProgress.value : 0) + "%…";
+            }
+          });
+          thumbUploaded = true;
+          thumbUrl = storagePublicUrl("photos", thumbPath) || null;
+        }
+
+        const videoUrl = storagePublicUrl("videos", videoPath);
+        if (!videoUrl) throw new Error("Could not read the uploaded video URL.");
+
+        const insert = await client.from("videos").insert({
+          title: title,
+          description: description || null,
+          video_path: videoUrl,
+          thumbnail_path: thumbUrl,
+          sort_order: nextOrder(videos),
+          is_published: true
+        });
+        if (insert.error) throw new Error(insert.error.message);
+
+        videoForm.reset();
+        await loadVideos();
+        setStatus("Added “" + title + "”. It is live on the site now.");
+      } catch (error) {
+        if (videoUploaded) await client.storage.from("videos").remove([videoPath]);
+        if (thumbUploaded) await client.storage.from("photos").remove([thumbPath]);
+        setStatus(error.message || "The video upload failed. Please try again.", "error");
+      } finally {
+        busy = false;
+        videoForm.removeAttribute("aria-busy");
+        if (videoSubmit) {
+          videoSubmit.disabled = false;
+          videoSubmit.textContent = "Upload video";
+        }
+        if (videoProgress) {
+          videoProgress.hidden = true;
+          videoProgress.value = 0;
+        }
+      }
+    });
+  }
+
   function showPanel(name) {
     activePanel = name;
     panels.forEach(function (panel) {
@@ -1115,6 +1405,7 @@
     if (!client) return;
     if (name === "songs" && !songsLoaded) loadSongs();
     if (name === "photos" && !photosLoaded) loadPhotos();
+    if (name === "videos" && !videosLoaded) loadVideos();
   }
 
   tabButtons.forEach(function (button) {
@@ -1176,6 +1467,32 @@
     });
   }
 
+  if (videoListEl) {
+    videoListEl.addEventListener("click", function (event) {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const row = button.closest("[data-id]");
+      if (!row) return;
+      const video = videos.find(function (item) { return item.id === row.dataset.id; });
+      if (!video || busy) return;
+
+      busy = true;
+      const action = button.dataset.action;
+      const work = action === "edit"
+        ? Promise.resolve(startVideoEdit(video, row))
+        : action === "toggle"
+          ? toggleVideo(video)
+          : deleteVideo(video);
+      Promise.resolve(work)
+        .catch(function (error) {
+          setStatus(error.message || "That change did not save. Please try again.", "error");
+        })
+        .finally(function () {
+          busy = false;
+        });
+    });
+  }
+
   if (songRefresh) {
     songRefresh.addEventListener("click", async function () {
       if (busy || !client) return;
@@ -1200,6 +1517,20 @@
       } finally {
         busy = false;
         photoRefresh.disabled = false;
+      }
+    });
+  }
+
+  if (videoRefresh) {
+    videoRefresh.addEventListener("click", async function () {
+      if (busy || !client) return;
+      busy = true;
+      videoRefresh.disabled = true;
+      try {
+        if (await loadVideos()) setStatus("Videos refreshed.");
+      } finally {
+        busy = false;
+        videoRefresh.disabled = false;
       }
     });
   }

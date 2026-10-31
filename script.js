@@ -1164,6 +1164,8 @@
     audio.addEventListener("play", () => {
       const songsAudio = document.querySelector("[data-songs-audio]");
       if (songsAudio && !songsAudio.paused) songsAudio.pause();
+      const videoPlayer = document.querySelector("[data-videos-player]");
+      if (videoPlayer && !videoPlayer.paused) videoPlayer.pause();
       paintPlaying(true);
       const title = currentIndex >= 0 ? trackButtons[currentIndex].dataset.title : "clip";
       announce("Playing " + title + ".");
@@ -1369,6 +1371,8 @@
     audio.addEventListener("play", () => {
       const dropsAudio = document.querySelector("#drops-audio");
       if (dropsAudio && !dropsAudio.paused) dropsAudio.pause();
+      const videoPlayer = document.querySelector("[data-videos-player]");
+      if (videoPlayer && !videoPlayer.paused) videoPlayer.pause();
       paintPlaying();
       const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-song-play]") : null;
       announce("Playing " + (button ? button.dataset.title : "song") + ".");
@@ -1390,6 +1394,241 @@
     });
 
     loadSongs();
+  }
+
+  /* ----------------------------------------------------------
+     Uploaded videos
+  ---------------------------------------------------------- */
+  const videosPanel = $("[data-videos]");
+
+  if (videosPanel) {
+    const player = $("[data-videos-player]", videosPanel);
+    const playerWrap = $("[data-videos-player-wrap]", videosPanel);
+    const nowTitle = $("[data-videos-now]", videosPanel);
+    const listEl = $("[data-videos-list]", videosPanel);
+    const countEl = $("[data-videos-count]", videosPanel);
+    const statusEl = $("[data-videos-status]", videosPanel);
+    let cards = [];
+    let currentIndex = -1;
+    let playRequest = 0;
+
+    const announce = (message, tone) => {
+      if (!statusEl) return;
+      statusEl.textContent = message;
+      statusEl.classList.toggle("is-error", tone === "error");
+    };
+
+    const resolveSource = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return raw.split("/").map((segment) => {
+        try {
+          return encodeURIComponent(decodeURIComponent(segment));
+        } catch (error) {
+          return encodeURIComponent(segment);
+        }
+      }).join("/");
+    };
+
+    const pauseAudio = () => {
+      ["#drops-audio", "[data-songs-audio]"].forEach((selector) => {
+        const audio = document.querySelector(selector);
+        if (audio && !audio.paused) audio.pause();
+      });
+    };
+
+    const requestPlay = () => {
+      const token = ++playRequest;
+      const attempt = player.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch((error) => {
+          if (token !== playRequest || (error && error.name === "AbortError")) return;
+          announce("This video could not start. Please try again.", "error");
+        });
+      }
+    };
+
+    const paintActive = () => {
+      cards.forEach((card, index) => {
+        const button = card.querySelector("[data-video-play]");
+        const active = index === currentIndex && !player.paused;
+        card.classList.toggle("is-active", index === currentIndex);
+        if (button) {
+          button.setAttribute(
+            "aria-label",
+            (active ? "Pause " : "Play ") + (button.dataset.title || "video")
+          );
+        }
+      });
+    };
+
+    const loadVideo = (index, shouldPlay) => {
+      if (!cards.length) return;
+      currentIndex = (index + cards.length) % cards.length;
+      const button = cards[currentIndex].querySelector("[data-video-play]");
+      if (!button || !button.dataset.src) return;
+      player.src = button.dataset.src;
+      if (button.dataset.poster) player.poster = button.dataset.poster;
+      else player.removeAttribute("poster");
+      if (nowTitle) nowTitle.textContent = button.dataset.title || "Video";
+      if (playerWrap) playerWrap.hidden = false;
+      paintActive();
+      player.load();
+      announce("Loading " + (button.dataset.title || "video") + "…");
+      if (shouldPlay) requestPlay();
+    };
+
+    const makeCard = (row) => {
+      const item = document.createElement("li");
+      item.className = "video-card";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "video-card__btn";
+      button.dataset.videoPlay = "";
+      button.dataset.src = resolveSource(row.video_path);
+      button.dataset.title = row.title || "Untitled video";
+      if (row.thumbnail_path) button.dataset.poster = resolveSource(row.thumbnail_path);
+      button.setAttribute("aria-label", "Play " + button.dataset.title);
+
+      const media = document.createElement("span");
+      media.className = "video-card__media";
+
+      if (row.thumbnail_path) {
+        const img = document.createElement("img");
+        img.className = "video-card__thumb";
+        img.src = resolveSource(row.thumbnail_path);
+        img.alt = "";
+        img.loading = "lazy";
+        media.appendChild(img);
+      } else {
+        media.classList.add("video-card__media--empty");
+        const placeholder = document.createElement("span");
+        placeholder.className = "video-card__placeholder";
+        placeholder.setAttribute("aria-hidden", "true");
+        placeholder.textContent = "JAMIX PRO UG";
+        media.appendChild(placeholder);
+      }
+
+      const play = document.createElement("span");
+      play.className = "video-card__play";
+      play.setAttribute("aria-hidden", "true");
+      const badge = document.createElement("span");
+      badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7Z" fill="currentColor"/></svg>';
+      play.appendChild(badge);
+      media.appendChild(play);
+
+      const body = document.createElement("span");
+      body.className = "video-card__body";
+      const title = document.createElement("span");
+      title.className = "video-card__title";
+      title.textContent = button.dataset.title;
+      const desc = document.createElement("span");
+      desc.className = "video-card__desc";
+      desc.textContent = row.description || "JAMIX PRO UG";
+      body.appendChild(title);
+      body.appendChild(desc);
+
+      button.appendChild(media);
+      button.appendChild(body);
+      item.appendChild(button);
+      return item;
+    };
+
+    const renderVideos = (rows) => {
+      listEl.textContent = "";
+      const fragment = document.createDocumentFragment();
+      rows.forEach((row) => {
+        if (!row || !row.video_path) return;
+        fragment.appendChild(makeCard(row));
+      });
+      listEl.appendChild(fragment);
+      cards = $$(".video-card", videosPanel);
+      if (countEl) countEl.textContent = String(cards.length);
+      listEl.hidden = cards.length === 0;
+      if (!cards.length) {
+        if (playerWrap) playerWrap.hidden = true;
+        announce("No videos have been published yet. Check back soon.");
+        return;
+      }
+      announce("Select a video to play.");
+    };
+
+    const loadVideos = async () => {
+      const config = window.JAMIX_SUPABASE || {};
+      const publicKey = config.key || config.anonKey || "";
+      if (!config.url || !publicKey) {
+        listEl.hidden = true;
+        announce("Videos are not available right now. Please try again later.", "error");
+        return;
+      }
+      try {
+        const endpoint =
+          String(config.url).replace(/\/+$/, "") +
+          "/rest/v1/videos?select=title,description,video_path,thumbnail_path&is_published=eq.true&order=sort_order.asc,created_at.asc";
+        const response = await fetch(endpoint, {
+          headers: {
+            apikey: publicKey,
+            Authorization: "Bearer " + publicKey,
+            Accept: "application/json"
+          }
+        });
+        if (!response.ok) throw new Error("Videos request failed.");
+        const rows = await response.json();
+        if (!Array.isArray(rows)) throw new Error("Unexpected videos response.");
+        renderVideos(rows);
+      } catch (error) {
+        listEl.hidden = true;
+        announce("Videos could not load right now. Please try again later.", "error");
+      }
+    };
+
+    listEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-video-play]");
+      if (!button) return;
+      const index = cards.indexOf(button.closest(".video-card"));
+      if (index < 0) return;
+      if (index === currentIndex) {
+        if (player.paused) requestPlay();
+        else player.pause();
+        return;
+      }
+      loadVideo(index, true);
+      if (playerWrap) {
+        try {
+          playerWrap.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        } catch (error) {
+          playerWrap.scrollIntoView();
+        }
+        player.focus({ preventScroll: true });
+      }
+    });
+
+    player.addEventListener("play", () => {
+      pauseAudio();
+      paintActive();
+      const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-video-play]") : null;
+      announce("Playing " + (button ? button.dataset.title : "video") + ".");
+    });
+
+    player.addEventListener("pause", () => {
+      paintActive();
+      if (player.ended) return;
+      const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-video-play]") : null;
+      announce("Paused " + (button ? button.dataset.title : "video") + ".");
+    });
+
+    player.addEventListener("ended", () => {
+      paintActive();
+      announce("Video finished. Choose another to keep watching.");
+    });
+
+    player.addEventListener("error", () => {
+      announce("This video could not be played. Please try another one.", "error");
+    });
+
+    loadVideos();
   }
 
   /* ----------------------------------------------------------

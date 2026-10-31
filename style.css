@@ -1648,6 +1648,185 @@ body.nav-open .mobile-nav__panel { transform: none; }
   .songs-list { grid-template-columns: 1fr; }
 }
 
+/* ---------- 9d. Videos ---------- */
+.section--videos {
+  background:
+    radial-gradient(55% 65% at 88% 0%, rgba(47, 107, 255, 0.1), transparent 62%),
+    radial-gradient(40% 50% at 0% 100%, rgba(212, 175, 55, 0.06), transparent 70%),
+    var(--navy-900);
+  border-bottom: 1px solid var(--line);
+}
+
+.videos-panel {
+  display: grid;
+  gap: clamp(18px, 2.4vw, 26px);
+}
+
+.videos-player {
+  overflow: hidden;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-lg);
+  background: rgba(4, 9, 18, 0.6);
+  box-shadow: var(--shadow-lg);
+}
+
+.videos-player__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.videos-player__head span {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.videos-player__head strong {
+  color: var(--white);
+  font-size: 0.95rem;
+}
+
+.videos-player__media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  object-fit: contain;
+}
+
+.videos-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.video-card { margin: 0; }
+
+.video-card__btn {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(4, 9, 18, 0.5);
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.video-card__btn:hover {
+  border-color: var(--gold-line);
+  background: rgba(255, 255, 255, 0.045);
+  transform: translateY(-2px);
+}
+
+.video-card.is-active .video-card__btn { border-color: var(--gold-line); }
+
+.video-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--navy-950);
+}
+
+.video-card__media--empty {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(70% 70% at 40% 35%, rgba(212, 175, 55, 0.18), transparent 70%),
+    radial-gradient(60% 60% at 90% 100%, rgba(47, 107, 255, 0.16), transparent 70%),
+    var(--navy-900);
+}
+
+.video-card__placeholder {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.3rem;
+  letter-spacing: 0.02em;
+  color: var(--gold-light);
+}
+
+.video-card__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s var(--ease);
+}
+
+.video-card__btn:hover .video-card__thumb { transform: scale(1.04); }
+
+.video-card__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(to top, rgba(4, 9, 18, 0.55), transparent 58%);
+}
+
+.video-card__play span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold) 58%, var(--gold-deep));
+  color: #081020;
+  box-shadow: var(--shadow-gold);
+  transition: transform 0.25s var(--ease);
+}
+
+.video-card__btn:hover .video-card__play span { transform: scale(1.06); }
+
+.video-card__play svg { width: 20px; height: 20px; }
+
+.video-card__body {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px 18px;
+}
+
+.video-card__title {
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.video-card__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted-2);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.videos-status {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.videos-status.is-error { color: #ffb3b3; }
+
+@media (max-width: 540px) {
+  .videos-list { grid-template-columns: 1fr; }
+}
+
 /* ---------- 10. Work / portfolio preview & grid ---------- */
 .preview-mosaic {
   display: grid;

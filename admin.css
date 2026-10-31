@@ -293,7 +293,8 @@ code {
   text-transform: uppercase;
 }
 
-.admin-field input {
+.admin-field input,
+.admin-field textarea {
   width: 100%;
   padding: 13px 15px;
   border: 1px solid var(--line-strong);
@@ -304,9 +305,17 @@ code {
   transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
 }
 
-.admin-field input:hover { border-color: rgba(255, 255, 255, 0.24); }
+.admin-field textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.55;
+}
 
-.admin-field input:focus {
+.admin-field input:hover,
+.admin-field textarea:hover { border-color: rgba(255, 255, 255, 0.24); }
+
+.admin-field input:focus,
+.admin-field textarea:focus {
   outline: none;
   border-color: var(--gold);
   background: rgba(4, 9, 18, 0.95);
@@ -462,9 +471,13 @@ code {
 
 .admin-rename--fields { flex-wrap: wrap; }
 
-.admin-rename--fields input { flex: 1 1 150px; }
+.admin-rename--fields input,
+.admin-rename--fields textarea { flex: 1 1 150px; }
 
-.admin-rename input {
+.admin-rename--fields textarea { min-height: 64px; resize: vertical; }
+
+.admin-rename input,
+.admin-rename textarea {
   flex: 1;
   min-width: 0;
   padding: 8px 10px;
@@ -475,7 +488,8 @@ code {
   font-size: 0.88rem;
 }
 
-.admin-rename input:focus { outline: none; border-color: var(--gold); }
+.admin-rename input:focus,
+.admin-rename textarea:focus { outline: none; border-color: var(--gold); }
 
 .admin-rename button { white-space: nowrap; }
 
