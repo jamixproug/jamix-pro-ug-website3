@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Drops admin — JAMIX PRO UG</title>
+  <title>Media admin — JAMIX PRO UG</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#060d1c">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
@@ -105,8 +105,8 @@
     <section data-dashboard hidden aria-labelledby="dash-title">
       <div class="admin-head">
         <div>
-          <p class="eyebrow">Drops &amp; IDs</p>
-          <h1 id="dash-title">Playlist</h1>
+          <p class="eyebrow">Media library</p>
+          <h1 id="dash-title">Dashboard</h1>
         </div>
         <p class="admin-count">
           <b data-count-published>0</b> published
@@ -115,7 +115,13 @@
         </p>
       </div>
 
-      <div class="admin-grid">
+      <div class="admin-tabs" role="tablist" aria-label="Manage media">
+        <button class="admin-tab" id="tab-drops" type="button" role="tab" data-tab="drops" aria-selected="true" aria-controls="panel-drops">Drops</button>
+        <button class="admin-tab" id="tab-songs" type="button" role="tab" data-tab="songs" aria-selected="false" aria-controls="panel-songs" tabindex="-1">Songs</button>
+        <button class="admin-tab" id="tab-photos" type="button" role="tab" data-tab="photos" aria-selected="false" aria-controls="panel-photos" tabindex="-1">Photos</button>
+      </div>
+
+      <div class="admin-grid" id="panel-drops" data-panel="drops" role="tabpanel" aria-labelledby="tab-drops">
         <section class="admin-card" aria-labelledby="add-title">
           <h2 id="add-title">Add a clip</h2>
           <p class="admin-hint">The file uploads to Supabase Storage, so it works from any device.</p>
@@ -147,8 +153,80 @@
         </section>
       </div>
 
+      <div class="admin-grid" id="panel-songs" data-panel="songs" role="tabpanel" aria-labelledby="tab-songs" hidden>
+        <section class="admin-card" aria-labelledby="song-add-title">
+          <h2 id="song-add-title">Add a song</h2>
+          <p class="admin-hint">Audio uploads to the <code>songs</code> bucket; cover art to <code>photos</code>.</p>
+          <form class="admin-form" data-song-add>
+            <label class="admin-field">
+              <span>Title</span>
+              <input name="title" maxlength="120" required placeholder="e.g. Midnight Kampala">
+            </label>
+            <label class="admin-field">
+              <span>Artist</span>
+              <input name="artist" maxlength="120" required placeholder="e.g. JAMIX PRO UG">
+            </label>
+            <label class="admin-field">
+              <span>Audio file</span>
+              <input name="audio" type="file" accept="audio/mpeg,audio/mp3,.mp3" required>
+            </label>
+            <label class="admin-field">
+              <span>Cover image (optional)</span>
+              <input name="cover" type="file" accept="image/jpeg,image/png,image/webp">
+            </label>
+            <p class="admin-hint">MP3 up to 25 MB. Cover JPG, PNG or WebP up to 8 MB.</p>
+            <button class="btn btn-gold admin-submit" type="submit" data-song-submit>Upload song</button>
+            <progress class="admin-progress" data-song-progress max="100" value="0" hidden></progress>
+          </form>
+        </section>
+
+        <section class="admin-card" aria-labelledby="song-list-title">
+          <div class="admin-card__head">
+            <h2 id="song-list-title">Songs</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-song-refresh>Refresh</button>
+          </div>
+          <p class="admin-empty" data-song-empty hidden>No songs yet. Add one on the left.</p>
+          <ol class="admin-list" data-song-list aria-label="Uploaded songs"></ol>
+        </section>
+      </div>
+
+      <div class="admin-grid" id="panel-photos" data-panel="photos" role="tabpanel" aria-labelledby="tab-photos" hidden>
+        <section class="admin-card" aria-labelledby="photo-add-title">
+          <h2 id="photo-add-title">Add a photo</h2>
+          <p class="admin-hint">Images upload to the <code>photos</code> bucket and appear in the portfolio gallery.</p>
+          <form class="admin-form" data-photo-add>
+            <label class="admin-field">
+              <span>Title</span>
+              <input name="title" maxlength="120" required placeholder="e.g. Studio session">
+            </label>
+            <label class="admin-field">
+              <span>Caption (optional)</span>
+              <input name="caption" maxlength="240" placeholder="e.g. Behind the decks at Silk">
+            </label>
+            <label class="admin-field">
+              <span>Image file</span>
+              <input name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+            </label>
+            <p class="admin-hint">JPG, PNG or WebP up to 8 MB.</p>
+            <button class="btn btn-gold admin-submit" type="submit" data-photo-submit>Upload photo</button>
+            <progress class="admin-progress" data-photo-progress max="100" value="0" hidden></progress>
+          </form>
+        </section>
+
+        <section class="admin-card" aria-labelledby="photo-list-title">
+          <div class="admin-card__head">
+            <h2 id="photo-list-title">Photos</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-photo-refresh>Refresh</button>
+          </div>
+          <p class="admin-empty" data-photo-empty hidden>No photos yet. Add one on the left.</p>
+          <ol class="admin-list" data-photo-list aria-label="Uploaded photos"></ol>
+        </section>
+      </div>
+
       <p class="admin-preview">
         <a class="link-arrow" href="index.html#music">Open the public player</a>
+        <span class="admin-count__sep">·</span>
+        <a class="link-arrow" href="portfolio.html">Open the public gallery</a>
       </p>
     </section>
   </main>

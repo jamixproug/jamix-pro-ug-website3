@@ -149,11 +149,76 @@
 
 .admin-count__sep { margin: 0 6px; color: var(--muted-2); }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 20px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(4, 9, 18, 0.55);
+}
+
+.admin-tab {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.admin-tab:hover { color: var(--white); }
+
+.admin-tab[aria-selected="true"] {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold) 58%, var(--gold-deep));
+  color: #081020;
+}
+
+.admin-tab:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
+
 .admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr);
   gap: 22px;
   align-items: start;
+}
+
+.admin-grid[hidden] { display: none; }
+
+.admin-progress {
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  accent-color: var(--gold);
+  overflow: hidden;
+}
+
+.admin-progress[hidden] { display: none; }
+
+.admin-progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-light));
+}
+
+.admin-progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-light));
 }
 
 .admin-preview { margin-top: 20px; font-size: 0.85rem; color: var(--muted); }
@@ -394,6 +459,10 @@ code {
 .admin-icon-btn svg { width: 15px; height: 15px; }
 
 .admin-rename { display: flex; gap: 8px; align-items: center; }
+
+.admin-rename--fields { flex-wrap: wrap; }
+
+.admin-rename--fields input { flex: 1 1 150px; }
 
 .admin-rename input {
   flex: 1;

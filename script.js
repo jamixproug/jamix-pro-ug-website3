@@ -177,49 +177,71 @@
   /* ----------------------------------------------------------
      Portfolio filters
   ---------------------------------------------------------- */
-  const filterButtons = $$("[data-filter]");
-  const portfolioItems = $$("[data-category]");
+  const filterGroup = $(".filter-group");
   const filterResult = $("[data-filter-result]");
+  const currentFilters = () => $$("[data-filter]");
+  const currentItems = () => $$("[data-category]");
 
-  if (filterButtons.length && portfolioItems.length) {
+  function updateFilterCounts() {
+    const items = currentItems();
+    currentFilters().forEach((button) => {
+      const filter = button.dataset.filter;
+      const count =
+        filter === "all"
+          ? items.length
+          : items.filter((item) =>
+              String(item.dataset.category || "")
+                .split(" ")
+                .map((value) => value.toLowerCase())
+                .includes(filter)
+            ).length;
+      const badge = button.querySelector("span");
+      if (badge) badge.textContent = String(count);
+    });
+  }
+
+  function setFilter(filter, updateUrl) {
+    const active = filter || "all";
+    let count = 0;
+    currentFilters().forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.filter === active ? "true" : "false");
+    });
+    currentItems().forEach((item) => {
+      const show =
+        active === "all" ||
+        String(item.dataset.category || "")
+          .split(" ")
+          .map((value) => value.toLowerCase())
+          .includes(active);
+      item.hidden = !show;
+      if (show) count += 1;
+    });
+    if (filterResult) {
+      filterResult.textContent =
+        count +
+        (count === 1 ? " project" : " projects") +
+        (active === "all"
+          ? " in the archive"
+          : " in " + active.charAt(0).toUpperCase() + active.slice(1));
+    }
+    if (updateUrl && window.history.replaceState) {
+      const next = new URL(window.location.href);
+      if (active === "all") next.searchParams.delete("filter");
+      else next.searchParams.set("filter", active);
+      window.history.replaceState({}, "", next.pathname + next.search + next.hash);
+    }
+  }
+
+  if (filterGroup && currentFilters().length && currentItems().length) {
     const params = new URLSearchParams(window.location.search);
     const requested = (params.get("filter") || "all").toLowerCase();
-
-    const setFilter = (filter, updateUrl) => {
-      const active = filter || "all";
-      let count = 0;
-      filterButtons.forEach((button) => {
-        const isActive = button.dataset.filter === active;
-        button.setAttribute("aria-pressed", isActive ? "true" : "false");
-      });
-      portfolioItems.forEach((item) => {
-        const show =
-          active === "all" ||
-          item.dataset.category.split(" ").map((c) => c.toLowerCase()).includes(active);
-        item.hidden = !show;
-        if (show) count += 1;
-      });
-      if (filterResult) {
-        filterResult.textContent =
-          count +
-          (count === 1 ? " project" : " projects") +
-          (active === "all"
-            ? " in the archive"
-            : " in " + active.charAt(0).toUpperCase() + active.slice(1));
-      }
-      if (updateUrl && window.history.replaceState) {
-        const next = new URL(window.location.href);
-        if (active === "all") next.searchParams.delete("filter");
-        else next.searchParams.set("filter", active);
-        window.history.replaceState({}, "", next.pathname + next.search + next.hash);
-      }
-    };
-
-    const valid = filterButtons.some((b) => b.dataset.filter === requested);
+    const valid = currentFilters().some((button) => button.dataset.filter === requested);
     setFilter(valid ? requested : "all", false);
 
-    filterButtons.forEach((button) => {
-      button.addEventListener("click", () => setFilter(button.dataset.filter, true));
+    filterGroup.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-filter]");
+      if (!button || !filterGroup.contains(button)) return;
+      setFilter(button.dataset.filter, true);
     });
   }
 
@@ -271,15 +293,17 @@
   }
 
   if (lightbox && lightboxImg && typeof lightbox.showModal === "function") {
-    $$("[data-lightbox]").forEach((trigger) => {
-      trigger.addEventListener("click", () => {
-        lightboxList = visibleLightboxItems();
-        lightboxTrigger = trigger;
-        paintLightbox(lightboxList.indexOf(trigger));
-        document.body.classList.add("nav-open");
-        lightbox.showModal();
-        if (lightboxClose) lightboxClose.focus();
-      });
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-lightbox]");
+      if (!trigger) return;
+      lightboxList = visibleLightboxItems();
+      lightboxTrigger = trigger;
+      const index = lightboxList.indexOf(trigger);
+      if (index < 0) return;
+      paintLightbox(index);
+      document.body.classList.add("nav-open");
+      lightbox.showModal();
+      if (lightboxClose) lightboxClose.focus();
     });
 
     const closeLightbox = () => {
@@ -305,6 +329,105 @@
       lightboxImg.removeAttribute("src");
       if (lightboxTrigger) lightboxTrigger.focus();
     });
+  }
+
+  /* ----------------------------------------------------------
+     Uploaded photos in the portfolio gallery
+  ---------------------------------------------------------- */
+  const portfolioGrid = $(".portfolio-grid");
+  const galleryConfig = window.JAMIX_SUPABASE || {};
+  const galleryKey = galleryConfig.key || galleryConfig.anonKey || "";
+
+  if (portfolioGrid && galleryConfig.url && galleryKey) {
+    const endpoint =
+      String(galleryConfig.url).replace(/\/+$/, "") +
+      "/rest/v1/photos?select=title,caption,file_path&is_published=eq.true&order=sort_order.asc,created_at.asc";
+
+    fetch(endpoint, {
+      headers: {
+        apikey: galleryKey,
+        Authorization: "Bearer " + galleryKey,
+        Accept: "application/json"
+      }
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((rows) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const fragment = document.createDocumentFragment();
+
+        rows.forEach((row) => {
+          if (!row || !row.file_path) return;
+          const item = document.createElement("article");
+          item.className = "portfolio-item";
+          item.dataset.category = "uploads";
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "portfolio-media";
+          button.dataset.lightbox = "";
+          button.dataset.full = row.file_path;
+          button.dataset.title = row.title || "Photo";
+          button.dataset.caption = row.caption || "";
+          button.dataset.alt = row.caption || row.title || "Photo from JAMIX PRO UG";
+          button.setAttribute("aria-label", "Preview " + (row.title || "photo"));
+
+          const img = document.createElement("img");
+          img.src = row.file_path;
+          img.alt = row.caption || row.title || "Photo from JAMIX PRO UG";
+          img.loading = "lazy";
+          button.appendChild(img);
+
+          const zoom = document.createElement("span");
+          zoom.className = "portfolio-zoom";
+          zoom.setAttribute("aria-hidden", "true");
+          zoom.innerHTML =
+            '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+          button.appendChild(zoom);
+
+          const body = document.createElement("div");
+          body.className = "portfolio-body";
+          const category = document.createElement("span");
+          category.className = "portfolio-category";
+          category.textContent = "Uploads";
+          const heading = document.createElement("h3");
+          heading.textContent = row.title || "Untitled photo";
+          const caption = document.createElement("p");
+          caption.textContent = row.caption || "From the JAMIX PRO UG gallery";
+          body.appendChild(category);
+          body.appendChild(heading);
+          body.appendChild(caption);
+
+          item.appendChild(button);
+          item.appendChild(body);
+          fragment.appendChild(item);
+        });
+
+        portfolioGrid.appendChild(fragment);
+
+        if (filterGroup && !filterGroup.querySelector('[data-filter="uploads"]')) {
+          const button = document.createElement("button");
+          button.className = "filter-btn";
+          button.type = "button";
+          button.dataset.filter = "uploads";
+          button.setAttribute("aria-pressed", "false");
+          button.textContent = "Uploads ";
+          const badge = document.createElement("span");
+          badge.textContent = "0";
+          button.appendChild(badge);
+          filterGroup.appendChild(button);
+        }
+
+        updateFilterCounts();
+        const requested = new URLSearchParams(window.location.search).get("filter");
+        const activeButton = document.querySelector('[data-filter][aria-pressed="true"]');
+        const active = requested && requested.toLowerCase() === "uploads"
+          ? "uploads"
+          : activeButton ? activeButton.dataset.filter : "all";
+        setFilter(active, false);
+      })
+      .catch(() => {
+        /* Keep the curated gallery when Supabase is unreachable. */
+      });
   }
 
   /* ----------------------------------------------------------
@@ -1039,6 +1162,8 @@
     }
 
     audio.addEventListener("play", () => {
+      const songsAudio = document.querySelector("[data-songs-audio]");
+      if (songsAudio && !songsAudio.paused) songsAudio.pause();
       paintPlaying(true);
       const title = currentIndex >= 0 ? trackButtons[currentIndex].dataset.title : "clip";
       announce("Playing " + title + ".");
@@ -1067,6 +1192,204 @@
 
     paintPlaying(false);
     loadPlaylist();
+  }
+
+  /* ----------------------------------------------------------
+     Uploaded songs
+  ---------------------------------------------------------- */
+  const songsPanel = $("[data-songs]");
+
+  if (songsPanel) {
+    const audio = $("[data-songs-audio]", songsPanel);
+    const listEl = $("[data-songs-list]", songsPanel);
+    const countEl = $("[data-songs-count]", songsPanel);
+    const statusEl = $("[data-songs-status]", songsPanel);
+    let cards = [];
+    let currentIndex = -1;
+    let playRequest = 0;
+
+    const announce = (message) => {
+      if (statusEl) statusEl.textContent = message;
+    };
+
+    const resolveSource = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return raw.split("/").map((segment) => {
+        try {
+          return encodeURIComponent(decodeURIComponent(segment));
+        } catch (error) {
+          return encodeURIComponent(segment);
+        }
+      }).join("/");
+    };
+
+    const paintPlaying = () => {
+      cards.forEach((card, index) => {
+        const button = card.querySelector("[data-song-play]");
+        const active = index === currentIndex && !audio.paused;
+        card.classList.toggle("is-playing", active);
+        if (button) {
+          const label = (active ? "Pause " : "Play ") + (button.dataset.title || "song");
+          button.setAttribute("aria-label", label);
+        }
+      });
+    };
+
+    const requestPlay = () => {
+      const token = ++playRequest;
+      const attempt = audio.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch((error) => {
+          if (token !== playRequest || (error && error.name === "AbortError")) return;
+          paintPlaying();
+          announce("This song could not be played. Please try another one.");
+        });
+      }
+    };
+
+    const loadTrack = (index, shouldPlay) => {
+      if (!cards.length) return;
+      currentIndex = (index + cards.length) % cards.length;
+      const button = cards[currentIndex].querySelector("[data-song-play]");
+      if (!button || !button.dataset.src) return;
+      cards.forEach((card, itemIndex) => {
+        card.classList.toggle("is-active", itemIndex === currentIndex);
+      });
+      audio.src = button.dataset.src;
+      audio.load();
+      announce("Loading " + (button.dataset.title || "song") + "…");
+      if (shouldPlay) requestPlay();
+    };
+
+    const renderSongs = (rows) => {
+      listEl.textContent = "";
+      const fragment = document.createDocumentFragment();
+
+      rows.forEach((row) => {
+        if (!row || !row.audio_path) return;
+        const item = document.createElement("li");
+        item.className = "song-card";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "song-card__btn";
+        button.dataset.songPlay = "";
+        button.dataset.src = resolveSource(row.audio_path);
+        button.dataset.title = row.title || "Untitled song";
+        button.dataset.artist = row.artist || "JAMIX PRO UG";
+        button.setAttribute("aria-label", "Play " + button.dataset.title);
+
+        const coverUrl = row.cover_path ? resolveSource(row.cover_path) : "";
+        if (coverUrl) {
+          const img = document.createElement("img");
+          img.className = "song-card__cover";
+          img.src = coverUrl;
+          img.alt = "";
+          img.loading = "lazy";
+          button.appendChild(img);
+        } else {
+          const placeholder = document.createElement("span");
+          placeholder.className = "song-card__cover song-card__cover--empty";
+          placeholder.setAttribute("aria-hidden", "true");
+          placeholder.textContent = "JP";
+          button.appendChild(placeholder);
+        }
+
+        const copy = document.createElement("span");
+        copy.className = "song-card__copy";
+        const title = document.createElement("span");
+        title.className = "song-card__title";
+        title.textContent = button.dataset.title;
+        const artist = document.createElement("span");
+        artist.className = "song-card__artist";
+        artist.textContent = button.dataset.artist;
+        copy.appendChild(title);
+        copy.appendChild(artist);
+
+        const icon = document.createElement("span");
+        icon.className = "song-card__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.innerHTML =
+          '<svg class="song-card__icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7Z" fill="currentColor"/></svg>' +
+          '<svg class="song-card__icon-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z" fill="currentColor"/></svg>';
+
+        button.appendChild(copy);
+        button.appendChild(icon);
+        item.appendChild(button);
+        fragment.appendChild(item);
+      });
+
+      listEl.appendChild(fragment);
+      cards = $$(".song-card", songsPanel);
+      currentIndex = -1;
+      if (countEl) countEl.textContent = String(cards.length);
+      paintPlaying();
+    };
+
+    const loadSongs = async () => {
+      const config = window.JAMIX_SUPABASE || {};
+      const publicKey = config.key || config.anonKey || "";
+      if (!config.url || !publicKey) return;
+      try {
+        const endpoint =
+          String(config.url).replace(/\/+$/, "") +
+          "/rest/v1/songs?select=title,artist,audio_path,cover_path&is_published=eq.true&order=sort_order.asc,created_at.asc";
+        const response = await fetch(endpoint, {
+          headers: {
+            apikey: publicKey,
+            Authorization: "Bearer " + publicKey,
+            Accept: "application/json"
+          }
+        });
+        if (!response.ok) return;
+        const rows = await response.json();
+        if (!Array.isArray(rows) || !rows.length) return;
+        renderSongs(rows);
+        songsPanel.hidden = false;
+      } catch (error) {
+        /* Keep the block hidden when the database is unreachable. */
+      }
+    };
+
+    listEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-song-play]");
+      if (!button) return;
+      const index = cards.indexOf(button.closest(".song-card"));
+      if (index < 0) return;
+      if (index !== currentIndex) {
+        loadTrack(index, true);
+        return;
+      }
+      if (audio.paused) requestPlay();
+      else audio.pause();
+    });
+
+    audio.addEventListener("play", () => {
+      const dropsAudio = document.querySelector("#drops-audio");
+      if (dropsAudio && !dropsAudio.paused) dropsAudio.pause();
+      paintPlaying();
+      const button = currentIndex >= 0 ? cards[currentIndex].querySelector("[data-song-play]") : null;
+      announce("Playing " + (button ? button.dataset.title : "song") + ".");
+    });
+
+    audio.addEventListener("pause", paintPlaying);
+
+    audio.addEventListener("ended", () => {
+      if (currentIndex < cards.length - 1) loadTrack(currentIndex + 1, true);
+      else {
+        paintPlaying();
+        announce("End of the song list.");
+      }
+    });
+
+    audio.addEventListener("error", () => {
+      paintPlaying();
+      announce("This song is not available yet. Please try another one.");
+    });
+
+    loadSongs();
   }
 
   /* ----------------------------------------------------------

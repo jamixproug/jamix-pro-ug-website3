@@ -133,3 +133,143 @@ where not exists (select 1 from public.drops);
 insert into public.admins (user_id, email)
 select id, email from auth.users where email = 'jamixproug@gmail.com'
 on conflict (user_id) do nothing;
+
+-- ---------- 7. Songs ----------
+create table if not exists public.songs (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null check (char_length(title) between 1 and 120),
+  artist       text not null default 'JAMIX PRO UG' check (char_length(artist) between 1 and 120),
+  audio_path   text not null,
+  cover_path   text,
+  sort_order   integer not null default 0,
+  is_published boolean not null default true,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists songs_sort_idx on public.songs (sort_order, created_at);
+
+alter table public.songs enable row level security;
+
+drop policy if exists "Published songs are public" on public.songs;
+create policy "Published songs are public"
+  on public.songs for select
+  using (is_published or public.is_admin());
+
+drop policy if exists "Admins insert songs" on public.songs;
+create policy "Admins insert songs"
+  on public.songs for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins update songs" on public.songs;
+create policy "Admins update songs"
+  on public.songs for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Admins delete songs" on public.songs;
+create policy "Admins delete songs"
+  on public.songs for delete
+  to authenticated
+  using (public.is_admin());
+
+-- ---------- 8. Photos ----------
+create table if not exists public.photos (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null check (char_length(title) between 1 and 120),
+  caption      text check (caption is null or char_length(caption) <= 240),
+  file_path    text not null,
+  sort_order   integer not null default 0,
+  is_published boolean not null default true,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists photos_sort_idx on public.photos (sort_order, created_at);
+
+alter table public.photos enable row level security;
+
+drop policy if exists "Published photos are public" on public.photos;
+create policy "Published photos are public"
+  on public.photos for select
+  using (is_published or public.is_admin());
+
+drop policy if exists "Admins insert photos" on public.photos;
+create policy "Admins insert photos"
+  on public.photos for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins update photos" on public.photos;
+create policy "Admins update photos"
+  on public.photos for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Admins delete photos" on public.photos;
+create policy "Admins delete photos"
+  on public.photos for delete
+  to authenticated
+  using (public.is_admin());
+
+-- ---------- 9. Songs and photos storage ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('songs', 'songs', true, 26214400, array['audio/mpeg', 'audio/mp3'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 26214400,
+      allowed_mime_types = array['audio/mpeg', 'audio/mp3'];
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('photos', 'photos', true, 8388608, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 8388608,
+      allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp'];
+
+drop policy if exists "Song audio is public" on storage.objects;
+create policy "Song audio is public"
+  on storage.objects for select
+  using (bucket_id = 'songs');
+
+drop policy if exists "Admins upload song audio" on storage.objects;
+create policy "Admins upload song audio"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'songs' and public.is_admin());
+
+drop policy if exists "Admins update song audio" on storage.objects;
+create policy "Admins update song audio"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'songs' and public.is_admin());
+
+drop policy if exists "Admins delete song audio" on storage.objects;
+create policy "Admins delete song audio"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'songs' and public.is_admin());
+
+drop policy if exists "Site photos are public" on storage.objects;
+create policy "Site photos are public"
+  on storage.objects for select
+  using (bucket_id = 'photos');
+
+drop policy if exists "Admins upload site photos" on storage.objects;
+create policy "Admins upload site photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'photos' and public.is_admin());
+
+drop policy if exists "Admins update site photos" on storage.objects;
+create policy "Admins update site photos"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'photos' and public.is_admin());
+
+drop policy if exists "Admins delete site photos" on storage.objects;
+create policy "Admins delete site photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'photos' and public.is_admin());

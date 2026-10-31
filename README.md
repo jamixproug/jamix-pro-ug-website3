@@ -17,18 +17,18 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build st
 | Blog | `blog.html` | Searchable, category-filtered article listing |
 | Article | `article.html` | Single article template driven by `assets/data/posts.js` (`article.html?post=slug`) |
 | Contact | `contact.html` | WhatsApp, email, location, social links and an enquiry form with validation |
-| Drops admin | `admin.html` | Private dashboard to manage the home-page playlist (not linked in navigation, `noindex`) |
+| Media admin | `admin.html` | Private dashboard to manage drops, songs and gallery photos (not linked in navigation, `noindex`) |
 | Not found | `404.html` | Friendly fallback page for broken or old links |
 
 Supporting files:
 
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
 - `admin.css` — admin-only layout, built on the same tokens.
-- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, form validation and Formspree submission.
-- `admin.js` — Supabase sign-in and playlist management for `admin.html`.
+- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player, uploaded-photo gallery, form validation and Formspree submission.
+- `admin.js` — Supabase sign-in and drops, songs and photos management for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
 - `js/supabase.js` — Supabase project URL and publishable key (older projects call it the anon key).
-- `supabase/schema.sql` — tables, security rules, storage bucket and seed data for the admin.
+- `supabase/schema.sql` — tables, security rules, storage buckets and seed data for the admin.
 - `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
@@ -85,13 +85,14 @@ jamix-pro-ug-website/
 ├── render.yaml
 ├── .gitignore
 ├── README.md
+├── js/
+│   └── supabase.js
 ├── supabase/
 │   └── schema.sql
 └── assets/
     ├── audio/            (11 MP3 clips)
     ├── data/
-    │   ├── posts.js
-    │   └── supabase.js
+    │   └── posts.js
     ├── icons/
     │   ├── logo-mark.svg
     │   ├── favicon.svg
@@ -154,9 +155,15 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 
 ---
 
-## 5. Drops admin (Supabase)
+## 5. Media admin (Supabase)
 
-`admin.html` is a private dashboard for the home-page **Drops & IDs** playlist. It can add a clip (uploading the MP3), rename, reorder, hide and delete clips. Changes appear on the public site within a minute — no code edit or redeploy.
+`admin.html` is a private dashboard for the site's media, split into three tabs:
+
+- **Drops** — the home-page **Drops & IDs** playlist: add a clip (uploading the MP3), rename, reorder, hide and delete.
+- **Songs** — full tracks with title, artist, optional cover image and a public player in the home listening section.
+- **Photos** — gallery images that appear in the portfolio grid under an **Uploads** filter.
+
+Changes appear on the public site within a minute — no code edit or redeploy.
 
 The page is deliberately not linked in the navigation. It is `noindex, nofollow` and disallowed in `robots.txt`. That keeps it out of search results; the real protection is the database rules.
 
@@ -164,21 +171,24 @@ The page is deliberately not linked in the navigation. It is `noindex, nofollow`
 
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
 2. Go to **Authentication → Users → Add user**. Use `jamixproug@gmail.com` with a strong password, and confirm the user. Do this before the next step: the schema allowlists the account by looking it up.
-3. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops` table, the `admins` allowlist, the security policies, a public `drops` storage bucket, the 11 existing clips and your admin row.
+3. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops`, `songs` and `photos` tables, the `admins` allowlist, the security policies, three public storage buckets (`drops`, `songs`, `photos`), the 11 existing clips and your admin row.
 4. Go to **Project Settings → API Keys** and copy the **Project URL** and the **publishable** key (older projects label it **anon public**) into `js/supabase.js`. This repository is already configured for the live project.
 5. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
 
-If the schema was run before the user existed, simply run it again — it is idempotent and will add the missing `admins` row.
+If the schema was run before the user existed, simply run it again — it is idempotent and will add the missing `admins` row. Run it again after pulling this update as well: it adds the `songs` and `photos` tables and buckets without touching existing drops.
 
 Leave the URL blank to go back to the previous behaviour: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
 
 ### Using the dashboard
 
-- Sign in at `https://<your-site>/admin.html`.
-- **Add a clip** uploads an MP3 to the `drops` bucket and publishes it at the end of the playlist. MP3 only, 10 MB maximum — clips of 5–15 seconds work best.
+- Sign in at `https://<your-site>/admin.html`, then choose the **Drops**, **Songs** or **Photos** tab.
+- **Drops → Add a clip** uploads an MP3 to the `drops` bucket and publishes it at the end of the playlist. MP3 only, 10 MB maximum — clips of 5–15 seconds work best.
 - The arrow buttons change the order, **Rename** edits the title inline, **Hide** removes a clip from the player without deleting it.
-- **Delete** removes the row and the uploaded file. Clips that came from `assets/audio/` keep their file in the repository; only the database row is removed.
-- The public player reads published rows from Supabase. If the database is unreachable it silently falls back to the hard-coded list, so visitors never see an empty section.
+- **Songs → Add a song** uploads audio to the `songs` bucket (MP3 up to 25 MB) and an optional cover to `photos`. The home player shows the cover, title, artist and play/pause controls.
+- **Photos → Add a photo** uploads an image to the `photos` bucket (JPG, PNG or WebP up to 8 MB) and adds it to the portfolio gallery.
+- Song and photo uploads show a live progress bar. Each row has **Edit** (title, artist or caption) and **Delete**.
+- **Delete** removes the row and the uploaded files. Clips that came from `assets/audio/` keep their file in the repository; only the database row is removed.
+- The public players and gallery read published rows from Supabase. If the database is unreachable the drops player silently falls back to the hard-coded list, and the songs and uploads sections stay hidden, so visitors never see an empty section.
 
 ### Security notes
 
@@ -194,7 +204,9 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 | Setup checklist stays visible | `js/supabase.js` still has blank values, or the deploy did not pick up the change |
 | "This account is not on the admin list" | The user exists but has no `admins` row — usually the schema ran before the user was created. Re-run `schema.sql` |
 | Upload fails with a policy error | `schema.sql` was not run in full, or the storage policies were skipped |
+| Songs or Photos tab says the table is missing | The older schema is still installed — re-run `schema.sql` to add both tables and buckets |
 | Player shows the old 11 clips | Supabase unreachable, no published rows, or the key is wrong — check the browser console |
+| Uploaded song has no cover or will not play | The cover is optional; playback needs an MP3 in the `songs` bucket and a published row. Check the console for the failing URL |
 
 ---
 
@@ -231,7 +243,7 @@ The home page “Listen” card repeats the Instagram, TikTok and YouTube links 
 
 ### Listening section (home)
 
-The `#music` section explains how a JAMIX PRO UG set is built and points visitors to the official channels. It also contains a **Drops & IDs** player for short venue tags, booking lines and shout-outs.
+The `#music` section explains how a JAMIX PRO UG set is built and points visitors to the official channels. It also contains a **Drops & IDs** player for short venue tags, booking lines and shout-outs, and a **Songs** player for full tracks uploaded from the dashboard.
 
 - The player asks Supabase for the published clips, in playlist order, once the page loads. If Supabase is unconfigured or unreachable it keeps the 11 clips hard-coded in `index.html`, so the section never breaks.
 - The original clips live in `assets/audio/`. New clips uploaded through `admin.html` go to Supabase Storage instead.
@@ -239,6 +251,7 @@ The `#music` section explains how a JAMIX PRO UG set is built and points visitor
 - The player has play/pause, previous/next, seek and a live status message. It shows a clear message if a clip cannot be loaded.
 - The vinyl graphic is drawn in CSS and stops spinning when the visitor prefers reduced motion.
 - The copy is adapted from the article “How a JAMIX PRO UG set is built” in `assets/data/posts.js`; keep the two consistent if you edit one.
+- The **Songs** panel is hidden until at least one published song exists. It lists cover, title and artist, and uses a single audio element with play/pause — one song plays at a time and nothing autoplays.
 
 The playlist is normally managed from `/admin.html` — see section 5. The table below documents the 11 clips that shipped with the site and are used as the database seed and as the no-JavaScript fallback.
 
@@ -296,6 +309,7 @@ Images are already compressed and supplied in modern WebP plus JPG fallbacks whe
 - Keep files under about 250 KB where possible.
 - Always write meaningful `alt` text; use `alt=""` only for purely decorative images.
 - Keep the same folder structure so relative paths continue to work.
+- Photos uploaded through `admin.html` are not stored in the repository; they live in Supabase Storage and appear in the portfolio grid under the **Uploads** filter. The curated gallery still comes from `assets/images/`.
 
 The photography and brand artwork in `assets/images/` were supplied by the brand owner. Confirm you hold the rights to every image before commercial publication, especially images featuring other people or third-party logos (for example the event flyer and the Mr. Vibe mark).
 
@@ -323,7 +337,7 @@ This build deliberately avoids inventing facts. Before publishing, review these 
 - **The Karaoke Night flyer** is presented as an event promotion. Its prices and details belong to the organiser (KTW Presents) and should be confirmed with them before being treated as current.
 - **The carved-wood portrait** is labelled as creative artwork, not a client project.
 - **Portfolio images** are brand and promotional material, not case studies. The page says so.
-- **No audio, mixes or video are hosted** on this site. The home listening section links to official channels and never claims to be a player.
+- **Audio is limited to what the owner uploads.** The site hosts the 11 short drops and any songs added through the dashboard. Full mixes and videos are not hosted; the listening section links to the official channels for those.
 - **Social handles** need verification (see above).
 - **The contact form** delivers through Formspree to `jamixproug@gmail.com`. Confirm that inbox is monitored, that Formspree notifications are not caught by spam filters, and that the free-plan quota suits the site's traffic.
 - **The email address and WhatsApp number** should be confirmed as the official booking channels.
@@ -402,7 +416,12 @@ Run through these before and after publishing:
 - [ ] Keyboard focus is visible throughout, including on the cream form card.
 - [ ] `/admin.html` shows the setup checklist while Supabase is unconfigured, and the sign-in form once it is.
 - [ ] Signing in with an allowlisted account lists the clips; an account without an `admins` row is refused and signed out.
+- [ ] The Drops, Songs and Photos tabs switch cleanly and keep the layout intact on a phone.
 - [ ] Adding, renaming, hiding, reordering and deleting a clip all survive a page reload and show on the home player.
+- [ ] Uploading a song shows progress, then the song appears in the home player with cover, title, artist and working play/pause.
+- [ ] Uploading a photo shows progress, then the photo appears in the portfolio under **Uploads** and opens in the lightbox.
+- [ ] Editing and deleting a song or photo updates both the dashboard and the public site after a refresh.
+- [ ] An oversized or wrong-type file is rejected with a clear message before upload.
 
 ---
 
@@ -415,7 +434,8 @@ Run through these before and after publishing:
 - **Accessibility.** Skip link, semantic landmarks, visible focus styles, labelled form fields, error messages announced via live regions, keyboard-operable filters and lightbox, `prefers-reduced-motion` support.
 - **No analytics or tracking** is installed. Add analytics only with the owner's consent and, where required, an appropriate cookie notice.
 - **No site backend of its own.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
-- **Drops data.** Playlist titles and order live in Supabase (Postgres), audio added through the dashboard lives in Supabase Storage, and all writes are gated by row-level security. The public player only ever reads published rows.
+- **Media data.** Drops, songs and photos live in Supabase (Postgres); audio and images added through the dashboard live in the `drops`, `songs` and `photos` Storage buckets. All writes are gated by row-level security. Public pages only ever read published rows.
+- **Uploads without the SDK.** File uploads use `XMLHttpRequest` to the Storage REST endpoint so the dashboard can show real progress; reads, sign-in and row writes use the Supabase client. One shared client is created in `admin.js` from `js/supabase.js`.
 
 ---
 

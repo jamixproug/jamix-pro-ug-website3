@@ -1547,6 +1547,107 @@ body.nav-open .mobile-nav__panel { transform: none; }
   to { transform: scaleY(1); }
 }
 
+/* Uploaded songs */
+.songs-panel { margin-top: clamp(18px, 2.4vw, 28px); }
+
+.songs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.song-card { margin: 0; }
+
+.song-card__btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(4, 9, 18, 0.45);
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.song-card__btn:hover {
+  border-color: var(--gold-line);
+  background: rgba(255, 255, 255, 0.045);
+  transform: translateY(-1px);
+}
+
+.song-card.is-active .song-card__btn { border-color: var(--gold-line); }
+
+.song-card__cover {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 9px;
+  object-fit: cover;
+  background: var(--navy-800);
+}
+
+.song-card__cover--empty {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(70% 70% at 40% 35%, rgba(212, 175, 55, 0.22), transparent 70%),
+    var(--navy-900);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--gold-light);
+}
+
+.song-card__copy { flex: 1 1 auto; min-width: 0; }
+
+.song-card__title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.song-card__artist {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.7rem;
+  color: var(--muted-2);
+}
+
+.song-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold) 58%, var(--gold-deep));
+  color: #081020;
+}
+
+.song-card__icon svg { width: 13px; height: 13px; }
+.song-card__icon-pause { display: none; }
+.song-card.is-playing .song-card__icon-play { display: none; }
+.song-card.is-playing .song-card__icon-pause { display: block; }
+
+.songs-status { margin-top: 12px; }
+
+@media (max-width: 540px) {
+  .songs-list { grid-template-columns: 1fr; }
+}
+
 /* ---------- 10. Work / portfolio preview & grid ---------- */
 .preview-mosaic {
   display: grid;

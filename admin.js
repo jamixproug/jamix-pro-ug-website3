@@ -12,6 +12,7 @@
     /^https?:\/\//.test(String(config.url || "")) && publicKey.length > 20;
 
   const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
   const setupEl = $("[data-setup]");
   const authEl = $("[data-auth]");
@@ -30,9 +31,32 @@
   const countPublishedEl = $("[data-count-published]");
   const countTotalEl = $("[data-count-total]");
   const statusEl = $("[data-status]");
+  const tabButtons = $$("[data-tab]");
+  const panels = $$("[data-panel]");
+  const songForm = $("[data-song-add]");
+  const songListEl = $("[data-song-list]");
+  const songEmptyEl = $("[data-song-empty]");
+  const songSubmit = $("[data-song-submit]");
+  const songProgress = $("[data-song-progress]");
+  const songRefresh = $("[data-song-refresh]");
+  const photoForm = $("[data-photo-add]");
+  const photoListEl = $("[data-photo-list]");
+  const photoEmptyEl = $("[data-photo-empty]");
+  const photoSubmit = $("[data-photo-submit]");
+  const photoProgress = $("[data-photo-progress]");
+  const photoRefresh = $("[data-photo-refresh]");
+
+  const AUDIO_MAX = 25 * 1024 * 1024;
+  const IMAGE_MAX = 8 * 1024 * 1024;
+  const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   let client = null;
   let clips = [];
+  let songs = [];
+  let photos = [];
+  let songsLoaded = false;
+  let photosLoaded = false;
+  let activePanel = "drops";
   let busy = false;
   let entering = false;
   let statusTimer = 0;
@@ -141,16 +165,22 @@
   }
 
   /* ---------- Rendering ---------- */
+  function paintCounts() {
+    const list =
+      activePanel === "songs" ? songs : activePanel === "photos" ? photos : clips;
+    if (countTotalEl) countTotalEl.textContent = String(list.length);
+    if (countPublishedEl) {
+      countPublishedEl.textContent = String(list.filter(function (item) {
+        return item.is_published;
+      }).length);
+    }
+  }
+
   function renderClips() {
     if (!listEl) return;
     listEl.textContent = "";
     if (emptyEl) emptyEl.hidden = clips.length > 0;
-    if (countTotalEl) countTotalEl.textContent = String(clips.length);
-    if (countPublishedEl) {
-      countPublishedEl.textContent = String(clips.filter(function (clip) {
-        return clip.is_published;
-      }).length);
-    }
+    paintCounts();
 
     clips.forEach(function (clip, index) {
       const row = document.createElement("li");
@@ -462,6 +492,714 @@
         addSubmit.disabled = false;
         addSubmit.textContent = "Upload and add";
         addForm.removeAttribute("aria-busy");
+      }
+    });
+  }
+
+  /* ---------- Songs and photos ---------- */
+  function isImageFile(file) {
+    if (!file) return false;
+    const nameOk = /\.(jpe?g|png|webp)$/i.test(String(file.name || ""));
+    const typeOk = !file.type || IMAGE_TYPES.indexOf(file.type) !== -1;
+    return nameOk && typeOk;
+  }
+
+  function imageExtension(file) {
+    const name = String((file && file.name) || "").toLowerCase();
+    if (name.endsWith(".png") || (file && file.type === "image/png")) return "png";
+    if (name.endsWith(".webp") || (file && file.type === "image/webp")) return "webp";
+    return "jpg";
+  }
+
+  function imageContentType(file) {
+    const extension = imageExtension(file);
+    return extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg";
+  }
+
+  function objectPath(filePath, bucket) {
+    const marker = "/storage/v1/object/public/" + bucket + "/";
+    const value = String(filePath || "");
+    const index = value.indexOf(marker);
+    if (index < 0) return "";
+    return decodeURIComponent(value.slice(index + marker.length));
+  }
+
+  function storagePublicUrl(bucket, path) {
+    const result = client.storage.from(bucket).getPublicUrl(path);
+    return result && result.data ? result.data.publicUrl : "";
+  }
+
+  function uploadObject(bucket, path, file, contentType, onProgress) {
+    return client.auth.getSession().then(function (result) {
+      return new Promise(function (resolve, reject) {
+        const session = result && result.data ? result.data.session : null;
+        if (!session || !session.access_token) {
+          reject(new Error("Your session expired. Sign in again."));
+          return;
+        }
+        const base = String(config.url).replace(/\/+$/, "");
+        const encoded = path.split("/").map(encodeURIComponent).join("/");
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", base + "/storage/v1/object/" + bucket + "/" + encoded);
+        xhr.setRequestHeader("apikey", publicKey);
+        xhr.setRequestHeader("Authorization", "Bearer " + session.access_token);
+        xhr.setRequestHeader("x-upsert", "false");
+        xhr.setRequestHeader("cache-control", "max-age=604800");
+        xhr.setRequestHeader("Content-Type", contentType || file.type || "application/octet-stream");
+        xhr.upload.addEventListener("progress", function (event) {
+          if (event.lengthComputable && typeof onProgress === "function") {
+            onProgress(event.loaded / event.total);
+          }
+        });
+        xhr.addEventListener("load", function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+            return;
+          }
+          let message = "Upload failed (" + xhr.status + ").";
+          try {
+            const body = JSON.parse(xhr.responseText);
+            if (body && body.message) message = body.message;
+          } catch (error) {
+            /* keep the status message */
+          }
+          reject(new Error(message));
+        });
+        xhr.addEventListener("error", function () {
+          reject(new Error("Upload failed. Check your connection and try again."));
+        });
+        xhr.addEventListener("abort", function () {
+          reject(new Error("Upload cancelled."));
+        });
+        xhr.send(file);
+      });
+    });
+  }
+
+  function paintUploadProgress(element, value) {
+    if (!element) return;
+    element.hidden = false;
+    element.value = Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  function nextOrder(list) {
+    return list.reduce(function (max, item) {
+      return Math.max(max, Number(item.sort_order) || 0);
+    }, 0) + 1;
+  }
+
+  function displayName(filePath) {
+    const clean = String(filePath || "").split("?")[0];
+    const parts = clean.split("/");
+    const name = parts[parts.length - 1] || clean;
+    try {
+      return decodeURIComponent(name);
+    } catch (error) {
+      return name;
+    }
+  }
+
+  function makeRow(index, titleText, metaParts, actionButtons) {
+    const row = document.createElement("li");
+    row.className = "admin-row";
+
+    const number = document.createElement("span");
+    number.className = "admin-row__index";
+    number.setAttribute("aria-hidden", "true");
+    number.textContent = String(index + 1).padStart(2, "0");
+
+    const body = document.createElement("div");
+    body.className = "admin-row__body";
+
+    const title = document.createElement("p");
+    title.className = "admin-row__title";
+    title.textContent = titleText;
+
+    const meta = document.createElement("p");
+    meta.className = "admin-row__meta";
+    metaParts.forEach(function (part) {
+      if (part) meta.appendChild(part);
+    });
+
+    body.appendChild(title);
+    body.appendChild(meta);
+
+    const actions = document.createElement("div");
+    actions.className = "admin-row__actions";
+    actionButtons.forEach(function (button) {
+      actions.appendChild(button);
+    });
+
+    row.appendChild(number);
+    row.appendChild(body);
+    row.appendChild(actions);
+    return { row: row, body: body };
+  }
+
+  async function updateRow(table, id, values) {
+    const response = await client.from(table).update(values).eq("id", id);
+    if (response.error) throw new Error(response.error.message);
+  }
+
+  async function removeStored(bucket, filePath) {
+    const path = objectPath(filePath, bucket);
+    if (!path) return true;
+    const removal = await client.storage.from(bucket).remove([path]);
+    return !removal.error;
+  }
+
+  function renderSongs() {
+    if (!songListEl) return;
+    songListEl.textContent = "";
+    if (songEmptyEl) songEmptyEl.hidden = songs.length > 0;
+    paintCounts();
+
+    songs.forEach(function (song, index) {
+      const artist = document.createElement("span");
+      artist.textContent = song.artist || "JAMIX PRO UG";
+      const file = document.createElement("span");
+      file.textContent = displayName(song.audio_path);
+
+      const edit = actionButton("Edit " + song.title, "M4 20h4L19 9l-4-4L4 16v4ZM14 6l4 4");
+      edit.dataset.action = "edit";
+      const remove = actionButton("Delete " + song.title, "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6", "admin-icon-btn--danger");
+      remove.dataset.action = "delete";
+
+      const built = makeRow(index, song.title, [artist, file], [edit, remove]);
+      built.row.dataset.id = song.id;
+      songListEl.appendChild(built.row);
+    });
+  }
+
+  function renderPhotos() {
+    if (!photoListEl) return;
+    photoListEl.textContent = "";
+    if (photoEmptyEl) photoEmptyEl.hidden = photos.length > 0;
+    paintCounts();
+
+    photos.forEach(function (photo, index) {
+      const caption = document.createElement("span");
+      caption.textContent = photo.caption || "No caption";
+      const file = document.createElement("span");
+      file.textContent = displayName(photo.file_path);
+
+      const edit = actionButton("Edit " + photo.title, "M4 20h4L19 9l-4-4L4 16v4ZM14 6l4 4");
+      edit.dataset.action = "edit";
+      const remove = actionButton("Delete " + photo.title, "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6", "admin-icon-btn--danger");
+      remove.dataset.action = "delete";
+
+      const built = makeRow(index, photo.title, [caption, file], [edit, remove]);
+      built.row.dataset.id = photo.id;
+      photoListEl.appendChild(built.row);
+    });
+  }
+
+  async function loadSongs() {
+    const response = await client
+      .from("songs")
+      .select("id,title,artist,audio_path,cover_path,sort_order,is_published,created_at")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (response.error) {
+      songsLoaded = false;
+      songs = [];
+      renderSongs();
+      setStatus("Could not load songs: " + response.error.message, "error");
+      return false;
+    }
+
+    songs = response.data || [];
+    songsLoaded = true;
+    renderSongs();
+    return true;
+  }
+
+  async function loadPhotos() {
+    const response = await client
+      .from("photos")
+      .select("id,title,caption,file_path,sort_order,is_published,created_at")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (response.error) {
+      photosLoaded = false;
+      photos = [];
+      renderPhotos();
+      setStatus("Could not load photos: " + response.error.message, "error");
+      return false;
+    }
+
+    photos = response.data || [];
+    photosLoaded = true;
+    renderPhotos();
+    return true;
+  }
+
+  function startSongEdit(song, row) {
+    const body = row.querySelector(".admin-row__body");
+    if (!body || body.querySelector(".admin-rename")) return;
+    body.textContent = "";
+
+    const form = document.createElement("form");
+    form.className = "admin-rename admin-rename--fields";
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.value = song.title;
+    titleInput.maxLength = 120;
+    titleInput.setAttribute("aria-label", "Song title for " + song.title);
+
+    const artistInput = document.createElement("input");
+    artistInput.type = "text";
+    artistInput.value = song.artist || "";
+    artistInput.maxLength = 120;
+    artistInput.setAttribute("aria-label", "Artist for " + song.title);
+
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "btn btn-gold btn-sm";
+    save.textContent = "Save";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn-ghost btn-sm admin-btn-light";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", renderSongs);
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const nextTitle = titleInput.value.trim();
+      const nextArtist = artistInput.value.trim();
+      if (!nextTitle || !nextArtist) {
+        (nextTitle ? artistInput : titleInput).focus();
+        return;
+      }
+      if (busy) return;
+      busy = true;
+      save.disabled = true;
+      save.textContent = "Saving…";
+      try {
+        await updateRow("songs", song.id, { title: nextTitle, artist: nextArtist });
+        await loadSongs();
+        setStatus("Saved “" + nextTitle + "”.");
+      } catch (error) {
+        setStatus(error.message || "Could not save the song.", "error");
+        save.disabled = false;
+        save.textContent = "Save";
+      } finally {
+        busy = false;
+      }
+    });
+
+    form.appendChild(titleInput);
+    form.appendChild(artistInput);
+    form.appendChild(save);
+    form.appendChild(cancel);
+    body.appendChild(form);
+    titleInput.focus();
+    titleInput.select();
+  }
+
+  function startPhotoEdit(photo, row) {
+    const body = row.querySelector(".admin-row__body");
+    if (!body || body.querySelector(".admin-rename")) return;
+    body.textContent = "";
+
+    const form = document.createElement("form");
+    form.className = "admin-rename admin-rename--fields";
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.value = photo.title;
+    titleInput.maxLength = 120;
+    titleInput.setAttribute("aria-label", "Photo title for " + photo.title);
+
+    const captionInput = document.createElement("input");
+    captionInput.type = "text";
+    captionInput.value = photo.caption || "";
+    captionInput.maxLength = 240;
+    captionInput.setAttribute("aria-label", "Caption for " + photo.title);
+
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "btn btn-gold btn-sm";
+    save.textContent = "Save";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn-ghost btn-sm admin-btn-light";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", renderPhotos);
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const nextTitle = titleInput.value.trim();
+      if (!nextTitle) {
+        titleInput.focus();
+        return;
+      }
+      if (busy) return;
+      busy = true;
+      save.disabled = true;
+      save.textContent = "Saving…";
+      try {
+        await updateRow("photos", photo.id, {
+          title: nextTitle,
+          caption: captionInput.value.trim() || null
+        });
+        await loadPhotos();
+        setStatus("Saved “" + nextTitle + "”.");
+      } catch (error) {
+        setStatus(error.message || "Could not save the photo.", "error");
+        save.disabled = false;
+        save.textContent = "Save";
+      } finally {
+        busy = false;
+      }
+    });
+
+    form.appendChild(titleInput);
+    form.appendChild(captionInput);
+    form.appendChild(save);
+    form.appendChild(cancel);
+    body.appendChild(form);
+    titleInput.focus();
+    titleInput.select();
+  }
+
+  async function deleteSong(song) {
+    const ok = window.confirm(
+      'Delete "' + song.title + '"? The song is removed from the site and its files are deleted. This cannot be undone.'
+    );
+    if (!ok) return;
+
+    const response = await client.from("songs").delete().eq("id", song.id);
+    if (response.error) throw new Error(response.error.message);
+
+    const audioRemoved = await removeStored("songs", song.audio_path);
+    const coverRemoved = song.cover_path ? await removeStored("photos", song.cover_path) : true;
+
+    await loadSongs();
+    if (audioRemoved && coverRemoved) setStatus("Deleted “" + song.title + "”.");
+    else setStatus("Song deleted, but a file could not be removed.", "error");
+  }
+
+  async function deletePhoto(photo) {
+    const ok = window.confirm(
+      'Delete "' + photo.title + '"? It disappears from the gallery and its file is deleted. This cannot be undone.'
+    );
+    if (!ok) return;
+
+    const response = await client.from("photos").delete().eq("id", photo.id);
+    if (response.error) throw new Error(response.error.message);
+
+    const fileRemoved = await removeStored("photos", photo.file_path);
+
+    await loadPhotos();
+    if (fileRemoved) setStatus("Deleted “" + photo.title + "”.");
+    else setStatus("Photo deleted, but its file could not be removed.", "error");
+  }
+
+  if (songForm) {
+    songForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (busy) return;
+
+      const titleInput = songForm.querySelector('input[name="title"]');
+      const artistInput = songForm.querySelector('input[name="artist"]');
+      const audioInput = songForm.querySelector('input[name="audio"]');
+      const coverInput = songForm.querySelector('input[name="cover"]');
+      const title = titleInput ? titleInput.value.trim() : "";
+      const artist = artistInput ? artistInput.value.trim() : "";
+      const audio = audioInput && audioInput.files ? audioInput.files[0] : null;
+      const cover = coverInput && coverInput.files ? coverInput.files[0] : null;
+
+      if (!title) {
+        setStatus("Give the song a title first.", "error");
+        if (titleInput) titleInput.focus();
+        return;
+      }
+      if (!artist) {
+        setStatus("Add the artist name as well.", "error");
+        if (artistInput) artistInput.focus();
+        return;
+      }
+      if (!audio) {
+        setStatus("Choose an MP3 file to upload.", "error");
+        return;
+      }
+      if (!/\.mp3$/i.test(audio.name) || (audio.type && audio.type !== "audio/mpeg")) {
+        setStatus("That is not an MP3 file. Export the song as MP3 and try again.", "error");
+        return;
+      }
+      if (audio.size > AUDIO_MAX) {
+        setStatus("That file is larger than 25 MB. Shorten the song and try again.", "error");
+        return;
+      }
+      if (cover && !isImageFile(cover)) {
+        setStatus("The cover must be a JPG, PNG or WebP image.", "error");
+        return;
+      }
+      if (cover && cover.size > IMAGE_MAX) {
+        setStatus("The cover is larger than 8 MB. Use a smaller image.", "error");
+        return;
+      }
+
+      busy = true;
+      songForm.setAttribute("aria-busy", "true");
+      if (songSubmit) {
+        songSubmit.disabled = true;
+        songSubmit.textContent = "Uploading…";
+      }
+      paintUploadProgress(songProgress, 0);
+
+      const stamp = Date.now();
+      const audioPath = stamp + "-" + slugify(title) + ".mp3";
+      const coverPath = cover
+        ? "covers/" + stamp + "-" + slugify(title) + "." + imageExtension(cover)
+        : "";
+      let audioUploaded = false;
+      let coverUploaded = false;
+
+      try {
+        await uploadObject("songs", audioPath, audio, "audio/mpeg", function (ratio) {
+          paintUploadProgress(songProgress, cover ? ratio * 82 : ratio * 100);
+          if (songSubmit) {
+            songSubmit.textContent = "Uploading " + (songProgress ? songProgress.value : 0) + "%…";
+          }
+        });
+        audioUploaded = true;
+
+        let coverUrl = null;
+        if (cover) {
+          await uploadObject("photos", coverPath, cover, imageContentType(cover), function (ratio) {
+            paintUploadProgress(songProgress, 82 + ratio * 18);
+            if (songSubmit) {
+              songSubmit.textContent = "Uploading " + (songProgress ? songProgress.value : 0) + "%…";
+            }
+          });
+          coverUploaded = true;
+          coverUrl = storagePublicUrl("photos", coverPath) || null;
+        }
+
+        const audioUrl = storagePublicUrl("songs", audioPath);
+        if (!audioUrl) throw new Error("Could not read the uploaded song URL.");
+
+        const insert = await client.from("songs").insert({
+          title: title,
+          artist: artist,
+          audio_path: audioUrl,
+          cover_path: coverUrl,
+          sort_order: nextOrder(songs),
+          is_published: true
+        });
+        if (insert.error) throw new Error(insert.error.message);
+
+        songForm.reset();
+        await loadSongs();
+        setStatus("Added “" + title + "”. It is live on the site now.");
+      } catch (error) {
+        if (audioUploaded) await client.storage.from("songs").remove([audioPath]);
+        if (coverUploaded) await client.storage.from("photos").remove([coverPath]);
+        setStatus(error.message || "The song upload failed. Please try again.", "error");
+      } finally {
+        busy = false;
+        songForm.removeAttribute("aria-busy");
+        if (songSubmit) {
+          songSubmit.disabled = false;
+          songSubmit.textContent = "Upload song";
+        }
+        if (songProgress) {
+          songProgress.hidden = true;
+          songProgress.value = 0;
+        }
+      }
+    });
+  }
+
+  if (photoForm) {
+    photoForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (busy) return;
+
+      const titleInput = photoForm.querySelector('input[name="title"]');
+      const captionInput = photoForm.querySelector('input[name="caption"]');
+      const imageInput = photoForm.querySelector('input[name="image"]');
+      const title = titleInput ? titleInput.value.trim() : "";
+      const caption = captionInput ? captionInput.value.trim() : "";
+      const image = imageInput && imageInput.files ? imageInput.files[0] : null;
+
+      if (!title) {
+        setStatus("Give the photo a title first.", "error");
+        if (titleInput) titleInput.focus();
+        return;
+      }
+      if (!image) {
+        setStatus("Choose an image to upload.", "error");
+        return;
+      }
+      if (!isImageFile(image)) {
+        setStatus("That is not a supported image. Use JPG, PNG or WebP.", "error");
+        return;
+      }
+      if (image.size > IMAGE_MAX) {
+        setStatus("That image is larger than 8 MB. Compress it and try again.", "error");
+        return;
+      }
+
+      busy = true;
+      photoForm.setAttribute("aria-busy", "true");
+      if (photoSubmit) {
+        photoSubmit.disabled = true;
+        photoSubmit.textContent = "Uploading…";
+      }
+      paintUploadProgress(photoProgress, 0);
+
+      const path = Date.now() + "-" + slugify(title) + "." + imageExtension(image);
+      let uploaded = false;
+
+      try {
+        await uploadObject("photos", path, image, imageContentType(image), function (ratio) {
+          paintUploadProgress(photoProgress, ratio * 100);
+          if (photoSubmit) {
+            photoSubmit.textContent = "Uploading " + (photoProgress ? photoProgress.value : 0) + "%…";
+          }
+        });
+        uploaded = true;
+
+        const url = storagePublicUrl("photos", path);
+        if (!url) throw new Error("Could not read the uploaded photo URL.");
+
+        const insert = await client.from("photos").insert({
+          title: title,
+          caption: caption || null,
+          file_path: url,
+          sort_order: nextOrder(photos),
+          is_published: true
+        });
+        if (insert.error) throw new Error(insert.error.message);
+
+        photoForm.reset();
+        await loadPhotos();
+        setStatus("Added “" + title + "”. It is in the gallery now.");
+      } catch (error) {
+        if (uploaded) await client.storage.from("photos").remove([path]);
+        setStatus(error.message || "The photo upload failed. Please try again.", "error");
+      } finally {
+        busy = false;
+        photoForm.removeAttribute("aria-busy");
+        if (photoSubmit) {
+          photoSubmit.disabled = false;
+          photoSubmit.textContent = "Upload photo";
+        }
+        if (photoProgress) {
+          photoProgress.hidden = true;
+          photoProgress.value = 0;
+        }
+      }
+    });
+  }
+
+  function showPanel(name) {
+    activePanel = name;
+    panels.forEach(function (panel) {
+      panel.hidden = panel.dataset.panel !== name;
+    });
+    tabButtons.forEach(function (button) {
+      const active = button.dataset.tab === name;
+      button.setAttribute("aria-selected", active ? "true" : "false");
+      button.tabIndex = active ? 0 : -1;
+    });
+    paintCounts();
+    if (!client) return;
+    if (name === "songs" && !songsLoaded) loadSongs();
+    if (name === "photos" && !photosLoaded) loadPhotos();
+  }
+
+  tabButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      showPanel(button.dataset.tab);
+    });
+    button.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      event.preventDefault();
+      const index = tabButtons.indexOf(button);
+      const step = event.key === "ArrowRight" ? 1 : -1;
+      const next = tabButtons[(index + step + tabButtons.length) % tabButtons.length];
+      next.focus();
+      showPanel(next.dataset.tab);
+    });
+  });
+
+  if (songListEl) {
+    songListEl.addEventListener("click", function (event) {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const row = button.closest("[data-id]");
+      if (!row) return;
+      const song = songs.find(function (item) { return item.id === row.dataset.id; });
+      if (!song || busy) return;
+
+      busy = true;
+      const action = button.dataset.action;
+      const work = action === "edit" ? Promise.resolve(startSongEdit(song, row)) : deleteSong(song);
+      Promise.resolve(work)
+        .catch(function (error) {
+          setStatus(error.message || "That change did not save. Please try again.", "error");
+        })
+        .finally(function () {
+          busy = false;
+        });
+    });
+  }
+
+  if (photoListEl) {
+    photoListEl.addEventListener("click", function (event) {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const row = button.closest("[data-id]");
+      if (!row) return;
+      const photo = photos.find(function (item) { return item.id === row.dataset.id; });
+      if (!photo || busy) return;
+
+      busy = true;
+      const action = button.dataset.action;
+      const work = action === "edit" ? Promise.resolve(startPhotoEdit(photo, row)) : deletePhoto(photo);
+      Promise.resolve(work)
+        .catch(function (error) {
+          setStatus(error.message || "That change did not save. Please try again.", "error");
+        })
+        .finally(function () {
+          busy = false;
+        });
+    });
+  }
+
+  if (songRefresh) {
+    songRefresh.addEventListener("click", async function () {
+      if (busy || !client) return;
+      busy = true;
+      songRefresh.disabled = true;
+      try {
+        if (await loadSongs()) setStatus("Songs refreshed.");
+      } finally {
+        busy = false;
+        songRefresh.disabled = false;
+      }
+    });
+  }
+
+  if (photoRefresh) {
+    photoRefresh.addEventListener("click", async function () {
+      if (busy || !client) return;
+      busy = true;
+      photoRefresh.disabled = true;
+      try {
+        if (await loadPhotos()) setStatus("Photos refreshed.");
+      } finally {
+        busy = false;
+        photoRefresh.disabled = false;
       }
     });
   }
