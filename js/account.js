@@ -49,12 +49,15 @@
       greetingEl.textContent = displayName ? "Welcome back, " + displayName + "." : "Welcome back.";
     }
     nameEls.forEach(function (el) {
-      el.textContent = displayName || "No display name yet";
+      el.textContent = displayName || "No full name yet";
     });
     setText(emailEl, email);
     if (avatarEl) {
-      avatarEl.src = profile.avatar_path || fallbackAvatar;
-      avatarEl.alt = displayName ? displayName + " profile picture" : "Default profile picture";
+      const url = profile.avatar_path || "";
+      avatarEl.src = url || fallbackAvatar;
+      avatarEl.alt = url
+        ? (displayName ? displayName + " profile picture" : "Your profile picture")
+        : "Default profile picture";
     }
     if (verifiedEl) {
       const verified = !!user.email_confirmed_at;

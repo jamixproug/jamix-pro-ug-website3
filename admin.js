@@ -943,7 +943,7 @@
       const email = document.createElement("span");
       email.className = "admin-user__email";
       email.textContent = user.email || "No email";
-      meta.appendChild(email);
+      if (displayName) meta.appendChild(email);
 
       const joined = document.createElement("span");
       joined.textContent = "Joined " + formatDay(user.created_at);

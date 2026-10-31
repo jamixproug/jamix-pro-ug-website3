@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Profile &amp; security — JAMIX PRO UG</title>
-  <meta name="description" content="Edit your JAMIX PRO UG display name, profile picture and password.">
+  <meta name="description" content="Edit your JAMIX PRO UG full name, profile picture and password.">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#060d1c">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
@@ -160,12 +160,12 @@
 
               <form class="account-form" data-name-form novalidate>
                 <label class="auth-field">
-                  <span>Display name</span>
-                  <input type="text" name="display_name" maxlength="60" autocomplete="nickname" placeholder="How your name shows here">
+                  <span>Full name</span>
+                  <input type="text" name="display_name" maxlength="60" autocomplete="name" placeholder="The name shown on your account">
                   <p class="auth-hint">Up to 60 characters. Leave it empty to use the default greeting.</p>
                 </label>
                 <p class="auth-error" data-name-error role="alert"></p>
-                <button class="btn btn-gold" type="submit" data-name-submit>Save display name</button>
+                <button class="btn btn-gold" type="submit" data-name-submit>Save full name</button>
                 <p class="account-status" data-name-status role="status" aria-live="polite"></p>
               </form>
             </article>
@@ -229,6 +229,7 @@
               <div class="account-actions">
                 <a class="btn btn-ghost" href="account.html">Account dashboard</a>
                 <a class="btn btn-ghost" href="forgot-password.html">Reset password by email</a>
+                <button class="btn btn-ghost" type="button" data-signout>Sign out</button>
               </div>
 
               <p class="account-note">

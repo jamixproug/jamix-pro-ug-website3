@@ -19,6 +19,7 @@
   const verifiedEl = $("[data-profile-verified]");
   const joinedEl = $("[data-profile-joined]");
   const idEl = $("[data-profile-id]");
+  const signOutButton = $("[data-signout]");
 
   const nameForm = $("[data-name-form]");
   const nameError = $("[data-name-error]");
@@ -72,12 +73,15 @@
     const email = (profile && profile.email) || user.email || "";
 
     nameEls.forEach(function (el) {
-      el.textContent = displayName || "No display name yet";
+      el.textContent = displayName || "No full name yet";
     });
     setText(emailEl, email);
     if (avatarEl) {
-      avatarEl.src = (profile && profile.avatar_path) || fallbackAvatar;
-      avatarEl.alt = displayName ? displayName + " profile picture" : "Default profile picture";
+      const url = (profile && profile.avatar_path) || "";
+      avatarEl.src = url || fallbackAvatar;
+      avatarEl.alt = url
+        ? (displayName ? displayName + " profile picture" : "Your profile picture")
+        : "Default profile picture";
     }
     if (verifiedEl) {
       const verified = !!user.email_confirmed_at;
@@ -148,7 +152,7 @@
     showError("Something went wrong loading your profile. Reload the page and try again.");
   });
 
-  /* ---------- Display name ---------- */
+  /* ---------- Full name ---------- */
   if (nameForm) {
     nameForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -156,7 +160,7 @@
       const value = String(nameForm.elements.display_name.value || "").trim();
 
       if (value.length > 60) {
-        nameError.textContent = "Keep the display name to 60 characters or fewer.";
+        nameError.textContent = "Keep the full name to 60 characters or fewer.";
         return;
       }
       nameError.textContent = "";
@@ -172,12 +176,12 @@
           .select("display_name");
         if (response.error) throw new Error(response.error.message);
         await refreshProfile();
-        setStatus(nameStatus, value ? "Display name saved." : "Display name cleared.");
+        setStatus(nameStatus, value ? "Full name saved." : "Full name cleared.");
       } catch (error) {
-        nameError.textContent = error.message || "Could not save the display name.";
+        nameError.textContent = error.message || "Could not save the full name.";
       } finally {
         nameSubmit.disabled = false;
-        nameSubmit.textContent = "Save display name";
+        nameSubmit.textContent = "Save full name";
       }
     });
   }
@@ -328,6 +332,15 @@
         passwordSubmit.disabled = false;
         passwordSubmit.textContent = "Change password";
       }
+    });
+  }
+
+  /* ---------- Sign out ---------- */
+  if (signOutButton) {
+    signOutButton.addEventListener("click", async function () {
+      signOutButton.disabled = true;
+      await auth.signOut();
+      window.location.replace("login.html?signedout=1");
     });
   }
 })();

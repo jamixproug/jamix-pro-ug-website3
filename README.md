@@ -21,8 +21,8 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build st
 | Sign in | `login.html` | Email and password sign-in, with links to registration and password recovery (`noindex`) |
 | Register | `register.html` | Creates a Supabase Auth account and asks the user to confirm by email (`noindex`) |
 | Forgot / reset password | `forgot-password.html`, `reset-password.html` | Sends a single-use reset link and sets the new password (`noindex`) |
-| My account | `account.html` | Private dashboard: display name, picture, email status, joining date and sign out (`noindex`) |
-| Profile & security | `profile.html` | Edit display name, upload or remove the profile picture, change the password (`noindex`) |
+| My account | `account.html` | Private dashboard: full name, picture, email status, joining date and sign out (`noindex`) |
+| Profile & security | `profile.html` | Edit full name, upload or remove the profile picture, change the password and sign out (`noindex`) |
 | Media admin | `admin.html` | Private dashboard to manage drops, songs, gallery photos, videos, radio and registered users (not linked in navigation, `noindex`) |
 | Not found | `404.html` | Friendly fallback page for broken or old links |
 
@@ -190,7 +190,7 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 - **Photos** — gallery images that appear in the portfolio grid under an **Uploads** filter.
 - **Videos** — uploaded MP4/WebM clips with title, description and optional thumbnail, published in the home **Videos** section.
 - **Radio** — the station name, tagline, stream URL, now playing text, logo and an on-air switch for `radio.html`.
-- **Users** — everyone who has registered on the site, with email, display name and joining date, plus suspend and restore.
+- **Users** — everyone who has registered on the site, with email, full name and joining date, plus suspend and restore.
 
 Changes appear on the public site within a minute — no code edit or redeploy.
 
@@ -225,7 +225,7 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 
 Registered users get a private profile. Everything runs on Supabase Auth — the site never stores or handles a password itself.
 
-Pages: `login.html`, `register.html`, `forgot-password.html`, `reset-password.html`, `account.html` (dashboard) and `profile.html` (display name, picture, password). They are linked from the account icon in the header, item **09 Account** in the mobile menu and the footer **Explore** list, and all six are `noindex, nofollow`.
+Pages: `login.html`, `register.html`, `forgot-password.html`, `reset-password.html`, `account.html` (dashboard) and `profile.html` (full name, picture, password, sign out). They are linked from the account icon in the header, item **09 Account** in the mobile menu and the footer **Explore** list, and all six are `noindex, nofollow`.
 
 To switch accounts on:
 
@@ -237,7 +237,8 @@ To switch accounts on:
 How it behaves:
 
 - A new account signs up, confirms by email, then signs in. The `profiles` row is created by the trigger on `auth.users`, so no insert privilege is given to visitors.
-- On the profile page a user can change their display name, upload or remove a picture (JPG, PNG or WebP up to 5 MB, stored under their own id in the `avatars` bucket) and change their password — the current password is required first.
+- On the profile page a user can change their full name, upload or remove a picture (JPG, PNG or WebP up to 5 MB, stored under their own id in the `avatars` bucket), change their password — the current password is required first — and sign out.
+
 - Email address, joining date and the suspension flag cannot be rewritten by the user, even inside their own row: `revoke`/`grant` limits updates to `display_name` and `avatar_path`.
 - Only signed-in users can read `profiles` at all, and only their own row; admins read every row. Anonymous requests are refused outright.
 - Admins see the list in **Users** and can suspend or restore an account. Suspending blocks the profile update policy and the site shows a clear "account suspended" message on sign-in. It does not delete anything, and only an admin — never the user themselves — can change it.
@@ -500,12 +501,12 @@ Run through these before and after publishing:
 - [ ] The confirmation link opens `login.html?verified=1` on this site and the account signs in.
 - [ ] Signing in takes the user to `account.html`, which shows their name, email, email status and joining date, and works on a phone and on a desktop.
 - [ ] Signing out returns to the sign-in page with a "signed out" message, and opening `account.html` or `profile.html` afterwards bounces back to `login.html`.
-- [ ] Changing the display name saves and survives a reload; a name over 60 characters is refused.
+- [ ] Changing the full name saves and survives a reload; a name over 60 characters is refused.
 - [ ] Uploading a JPG, PNG or WebP picture updates the avatar on both account pages; an oversized or unsupported file is rejected before upload, and **Remove picture** returns to the default mark.
 - [ ] Changing the password requires the current one, rejects a mismatch or a repeated password, and the new password then signs in.
 - [ ] **Forgot password** sends a link for a registered address and shows the same neutral message for an unregistered one.
 - [ ] The reset link opens `reset-password.html` in recovery mode and saves; a stale or used link shows the "no longer valid" panel instead of a blank form.
-- [ ] The **Users** tab lists each account with email, display name and joining date, marks admin rows, and suspend/restore both ask for confirmation and survive a reload.
+- [ ] The **Users** tab lists each account with email, full name and joining date, marks admin rows, and suspend/restore both ask for confirmation and survive a reload.
 - [ ] A suspended account cannot edit its profile; the sign-in page explains the suspension rather than signing it in.
 - [ ] An anonymous request to `/rest/v1/profiles` is refused, and no password, token or `service_role` key appears in the repository or the browser console.
 
