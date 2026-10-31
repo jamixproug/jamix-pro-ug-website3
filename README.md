@@ -18,7 +18,12 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build st
 | Blog | `blog.html` | Searchable, category-filtered article listing |
 | Article | `article.html` | Single article template driven by `assets/data/posts.js` (`article.html?post=slug`) |
 | Contact | `contact.html` | WhatsApp, email, location, social links and an enquiry form with validation |
-| Media admin | `admin.html` | Private dashboard to manage drops, songs, gallery photos and videos (not linked in navigation, `noindex`) |
+| Sign in | `login.html` | Email and password sign-in, with links to registration and password recovery (`noindex`) |
+| Register | `register.html` | Creates a Supabase Auth account and asks the user to confirm by email (`noindex`) |
+| Forgot / reset password | `forgot-password.html`, `reset-password.html` | Sends a single-use reset link and sets the new password (`noindex`) |
+| My account | `account.html` | Private dashboard: display name, picture, email status, joining date and sign out (`noindex`) |
+| Profile & security | `profile.html` | Edit display name, upload or remove the profile picture, change the password (`noindex`) |
+| Media admin | `admin.html` | Private dashboard to manage drops, songs, gallery photos, videos, radio and registered users (not linked in navigation, `noindex`) |
 | Not found | `404.html` | Friendly fallback page for broken or old links |
 
 Supporting files:
@@ -26,12 +31,16 @@ Supporting files:
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
 - `admin.css` — admin-only layout, built on the same tokens.
 - `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player, uploaded-video player, live radio player, uploaded-photo gallery, form validation and Formspree submission.
-- `admin.js` — Supabase sign-in and drops, songs, photos, videos and radio settings management for `admin.html`.
+- `admin.js` — Supabase sign-in and drops, songs, photos, videos, radio settings and registered-user management for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
 - `js/supabase.js` — Supabase project URL and publishable key (older projects call it the anon key).
+- `js/auth.js` — shared session helpers for the account pages: client creation, friendly error text, password checks, profile loading and the signed-in guard.
+- `js/auth-pages.js` — sign-in, registration, forgot-password and reset-password behaviour.
+- `js/account.js` and `js/profile.js` — the account dashboard and the profile, picture and password forms.
 - `supabase/schema.sql` — tables, security rules, storage buckets and seed data for a fresh install.
 - `supabase/videos.sql` — the standalone videos migration for a project that already has `schema.sql` installed.
 - `supabase/radio.sql` — the standalone live radio migration for a project that already has `schema.sql` installed.
+- `supabase/accounts.sql` — the standalone accounts migration: `profiles`, its security rules and grants, the `avatars` bucket and the admin suspension function.
 - `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
@@ -78,6 +87,12 @@ jamix-pro-ug-website/
 ├── blog.html
 ├── article.html
 ├── contact.html
+├── login.html
+├── register.html
+├── forgot-password.html
+├── reset-password.html
+├── account.html
+├── profile.html
 ├── admin.html
 ├── 404.html
 ├── style.css
@@ -90,11 +105,16 @@ jamix-pro-ug-website/
 ├── .gitignore
 ├── README.md
 ├── js/
-│   └── supabase.js
+│   ├── supabase.js
+│   ├── auth.js
+│   ├── auth-pages.js
+│   ├── account.js
+│   └── profile.js
 ├── supabase/
 │   ├── schema.sql
 │   ├── videos.sql
-│   └── radio.sql
+│   ├── radio.sql
+│   └── accounts.sql
 └── assets/
     ├── audio/            (11 MP3 clips)
     ├── data/
@@ -163,13 +183,14 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 
 ## 5. Media admin (Supabase)
 
-`admin.html` is a private dashboard for the site's media and live radio, split into five tabs:
+`admin.html` is a private dashboard for the site's media, live radio and registered users, split into six tabs:
 
 - **Drops** — the home-page **Drops & IDs** playlist: add a clip (uploading the MP3), rename, reorder, hide and delete.
 - **Songs** — full tracks with title, artist, optional cover image and a public player in the home listening section.
 - **Photos** — gallery images that appear in the portfolio grid under an **Uploads** filter.
 - **Videos** — uploaded MP4/WebM clips with title, description and optional thumbnail, published in the home **Videos** section.
 - **Radio** — the station name, tagline, stream URL, now playing text, logo and an on-air switch for `radio.html`.
+- **Users** — everyone who has registered on the site, with email, display name and joining date, plus suspend and restore.
 
 Changes appear on the public site within a minute — no code edit or redeploy.
 
@@ -200,6 +221,29 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 - **Delete** removes the row and the uploaded files. Clips that came from `assets/audio/` keep their file in the repository; only the database row is removed.
 - The public players and gallery read published rows from Supabase. If the database is unreachable the drops player silently falls back to the hard-coded list, and the songs and uploads sections stay hidden, so visitors never see an empty section. The videos section explains that videos could not load instead of showing a broken player. The radio page likewise shows a clear message and keeps play disabled when the station details cannot be loaded.
 
+### Visitor accounts (Supabase Auth)
+
+Registered users get a private profile. Everything runs on Supabase Auth — the site never stores or handles a password itself.
+
+Pages: `login.html`, `register.html`, `forgot-password.html`, `reset-password.html`, `account.html` (dashboard) and `profile.html` (display name, picture, password). They are linked from the account icon in the header, item **09 Account** in the mobile menu and the footer **Explore** list, and all six are `noindex, nofollow`.
+
+To switch accounts on:
+
+1. Run `supabase/accounts.sql` in the SQL Editor. It adds the `profiles` table, the two `auth.users` triggers, the row-level-security rules and column grants, the `admin_set_user_suspended()` function and a new public `avatars` bucket. It changes nothing in `drops`, `songs`, `photos`, `videos`, `radio_settings` or `admins`, and it is safe to re-run.
+2. In **Authentication → Sign In / Providers → Email**, keep **Confirm email** on. Registration then sends a confirmation link and the account cannot sign in until it is opened.
+3. In **Authentication → URL Configuration**, set **Site URL** to `https://jamix-pro-ug-website3.onrender.com` and add the same address to the redirect allowlist. Without this the confirmation and reset links do not come back to your site.
+4. Confirm the links themselves: `.../login.html?verified=1` for new sign-ups and `.../reset-password.html` for password resets.
+
+How it behaves:
+
+- A new account signs up, confirms by email, then signs in. The `profiles` row is created by the trigger on `auth.users`, so no insert privilege is given to visitors.
+- On the profile page a user can change their display name, upload or remove a picture (JPG, PNG or WebP up to 5 MB, stored under their own id in the `avatars` bucket) and change their password — the current password is required first.
+- Email address, joining date and the suspension flag cannot be rewritten by the user, even inside their own row: `revoke`/`grant` limits updates to `display_name` and `avatar_path`.
+- Only signed-in users can read `profiles` at all, and only their own row; admins read every row. Anonymous requests are refused outright.
+- Admins see the list in **Users** and can suspend or restore an account. Suspending blocks the profile update policy and the site shows a clear "account suspended" message on sign-in. It does not delete anything, and only an admin — never the user themselves — can change it.
+
+Two limits worth knowing: passwords and tokens live in Supabase Auth and are never readable from this site, and **deleting** a registered account is not exposed in the dashboard because that requires the `service_role` key. Delete a user in **Authentication → Users** if removal is really needed; the profile row follows it through `on delete cascade`.
+
 ### Security notes
 
 - The **publishable** key (formerly anon) in `js/supabase.js` is public by design. Every write is checked by row-level security against the `admins` table.
@@ -221,6 +265,11 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 | Player shows the old 11 clips | Supabase unreachable, no published rows, or the key is wrong — check the browser console |
 | Uploaded song has no cover or will not play | The cover is optional; playback needs an MP3 in the `songs` bucket and a published row. Check the console for the failing URL |
 | Video upload is rejected as too large | The limit is 50 MB, matching the Supabase Free plan. Compress the clip or shorten it; the bucket and the dashboard enforce the same limit |
+| Account pages say the migration may not have been applied | `supabase/accounts.sql` has not been run — the `profiles` table does not exist yet |
+| Sign-up never receives a confirmation email | Turn on **Confirm email**, then check the spam folder. The resend button on `register.html` waits 30 seconds between requests |
+| Confirmation or reset link opens the wrong site | **Site URL** or the redirect allowlist in **Authentication → URL Configuration** does not match the deployed address |
+| Users tab says it could not load users | Run `supabase/accounts.sql`. If it still fails, the signed-in account is not in the `admins` allowlist |
+| Profile picture upload rejected | `accounts.sql` creates the `avatars` bucket — if it is missing the upload fails. Also check the file is JPG, PNG or WebP and under 5 MB |
 
 ---
 
@@ -433,7 +482,7 @@ Run through these before and after publishing:
 - [ ] Keyboard focus is visible throughout, including on the cream form card.
 - [ ] `/admin.html` shows the setup checklist while Supabase is unconfigured, and the sign-in form once it is.
 - [ ] Signing in with an allowlisted account lists the clips; an account without an `admins` row is refused and signed out.
-- [ ] The Drops, Songs, Photos, Videos and Radio tabs switch cleanly and keep the layout intact on a phone.
+- [ ] The Drops, Songs, Photos, Videos, Radio and Users tabs switch cleanly and keep the layout intact on a phone.
 - [ ] Adding, renaming, hiding, reordering and deleting a clip all survive a page reload and show on the home player.
 - [ ] Uploading a song shows progress, then the song appears in the home player with cover, title, artist and working play/pause.
 - [ ] Uploading a photo shows progress, then the photo appears in the portfolio under **Uploads** and opens in the lightbox.
@@ -447,6 +496,18 @@ Run through these before and after publishing:
 - [ ] With **Off air** ticked off, the public page shows “Off air” and play is disabled. An invalid stream URL is rejected in the dashboard.
 - [ ] The **Radio** link appears in the desktop navigation, mobile menu and footer on every page.
 - [ ] When the stream URL is unreachable, the page shows a clear offline message rather than loading forever.
+- [ ] Registering with a new email sends a confirmation link, the resend button works after the 30 second wait, and signing in before confirming says the email still needs confirming.
+- [ ] The confirmation link opens `login.html?verified=1` on this site and the account signs in.
+- [ ] Signing in takes the user to `account.html`, which shows their name, email, email status and joining date, and works on a phone and on a desktop.
+- [ ] Signing out returns to the sign-in page with a "signed out" message, and opening `account.html` or `profile.html` afterwards bounces back to `login.html`.
+- [ ] Changing the display name saves and survives a reload; a name over 60 characters is refused.
+- [ ] Uploading a JPG, PNG or WebP picture updates the avatar on both account pages; an oversized or unsupported file is rejected before upload, and **Remove picture** returns to the default mark.
+- [ ] Changing the password requires the current one, rejects a mismatch or a repeated password, and the new password then signs in.
+- [ ] **Forgot password** sends a link for a registered address and shows the same neutral message for an unregistered one.
+- [ ] The reset link opens `reset-password.html` in recovery mode and saves; a stale or used link shows the "no longer valid" panel instead of a blank form.
+- [ ] The **Users** tab lists each account with email, display name and joining date, marks admin rows, and suspend/restore both ask for confirmation and survive a reload.
+- [ ] A suspended account cannot edit its profile; the sign-in page explains the suspension rather than signing it in.
+- [ ] An anonymous request to `/rest/v1/profiles` is refused, and no password, token or `service_role` key appears in the repository or the browser console.
 
 ---
 
