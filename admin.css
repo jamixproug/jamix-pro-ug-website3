@@ -522,6 +522,17 @@ code {
 
 .admin-row.is-hidden .admin-row__title { color: var(--muted); }
 
+/* ---------- Registered users ---------- */
+.admin-grid--wide { grid-template-columns: minmax(0, 1fr); }
+
+.admin-tag--admin { background: rgba(212, 175, 55, 0.16); color: var(--gold-light); }
+.admin-tag--suspended { background: rgba(255, 107, 107, 0.16); color: #ff9d9d; }
+
+.admin-user__email {
+  color: var(--white-soft);
+  overflow-wrap: anywhere;
+}
+
 .admin-row__actions {
   display: flex;
   gap: 5px;

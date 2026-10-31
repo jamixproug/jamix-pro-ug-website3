@@ -115,12 +115,13 @@
         </p>
       </div>
 
-      <div class="admin-tabs" role="tablist" aria-label="Manage media">
+      <div class="admin-tabs" role="tablist" aria-label="Dashboard sections">
         <button class="admin-tab" id="tab-drops" type="button" role="tab" data-tab="drops" aria-selected="true" aria-controls="panel-drops">Drops</button>
         <button class="admin-tab" id="tab-songs" type="button" role="tab" data-tab="songs" aria-selected="false" aria-controls="panel-songs" tabindex="-1">Songs</button>
         <button class="admin-tab" id="tab-photos" type="button" role="tab" data-tab="photos" aria-selected="false" aria-controls="panel-photos" tabindex="-1">Photos</button>
         <button class="admin-tab" id="tab-videos" type="button" role="tab" data-tab="videos" aria-selected="false" aria-controls="panel-videos" tabindex="-1">Videos</button>
         <button class="admin-tab" id="tab-radio" type="button" role="tab" data-tab="radio" aria-selected="false" aria-controls="panel-radio" tabindex="-1">Radio</button>
+        <button class="admin-tab" id="tab-users" type="button" role="tab" data-tab="users" aria-selected="false" aria-controls="panel-users" tabindex="-1">Users</button>
       </div>
 
       <div class="admin-grid" id="panel-drops" data-panel="drops" role="tabpanel" aria-labelledby="tab-drops">
@@ -329,6 +330,25 @@
           </div>
           <p class="admin-hint admin-hint--foot">
             <a class="link-arrow" href="radio.html">Open the public radio page</a>
+          </p>
+        </section>
+      </div>
+
+      <div class="admin-grid admin-grid--wide" id="panel-users" data-panel="users" role="tabpanel" aria-labelledby="tab-users" hidden>
+        <section class="admin-card" aria-labelledby="users-title">
+          <div class="admin-card__head">
+            <h2 id="users-title">Registered users</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-users-refresh>Refresh</button>
+          </div>
+          <p class="admin-hint">
+            Everyone with a JAMIX PRO UG account. Only admins can see this list; passwords and sign-in tokens
+            are never stored here and cannot be viewed from this page.
+          </p>
+          <p class="admin-empty" data-users-empty hidden>No registered users yet.</p>
+          <ol class="admin-list" data-users-list aria-label="Registered users"></ol>
+          <p class="admin-hint admin-hint--foot">
+            Suspending an account blocks sign-in and profile edits until you restore it. Accounts cannot be
+            deleted from this page — remove them from Supabase Authentication if that is really needed.
           </p>
         </section>
       </div>

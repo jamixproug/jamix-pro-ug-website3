@@ -58,6 +58,9 @@
   const radioRefresh = $("[data-radio-refresh]");
   const radioPreview = $("[data-radio-preview]");
   const radioEmpty = $("[data-radio-empty]");
+  const usersListEl = $("[data-users-list]");
+  const usersEmptyEl = $("[data-users-empty]");
+  const usersRefresh = $("[data-users-refresh]");
 
   const AUDIO_MAX = 25 * 1024 * 1024;
   const IMAGE_MAX = 8 * 1024 * 1024;
@@ -75,6 +78,10 @@
   let videosLoaded = false;
   let radioSettings = null;
   let radioLoaded = false;
+  let users = [];
+  let adminIds = [];
+  let usersLoaded = false;
+  let currentUserId = "";
   let activePanel = "drops";
   let busy = false;
   let entering = false;
@@ -185,7 +192,7 @@
 
   /* ---------- Rendering ---------- */
   function paintCounts() {
-    if (activePanel === "radio") return;
+    if (activePanel === "radio" || activePanel === "users") return;
     const list =
       activePanel === "songs" ? songs
         : activePanel === "photos" ? photos
@@ -886,6 +893,136 @@
       url.title = row.stream_url || "";
     }
     if (updated) updated.textContent = formatWhen(row.updated_at) || "—";
+  }
+
+  /* ---------- Registered users ---------- */
+  function formatDay(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  }
+
+  function userTag(label, tone) {
+    const tag = document.createElement("span");
+    tag.className = "admin-tag admin-tag--" + tone;
+    tag.textContent = label;
+    return tag;
+  }
+
+  function renderUsers() {
+    if (!usersListEl) return;
+    usersListEl.textContent = "";
+    if (usersEmptyEl) usersEmptyEl.hidden = users.length > 0;
+
+    users.forEach(function (user, index) {
+      const row = document.createElement("li");
+      row.className = "admin-row" + (user.is_suspended ? " is-hidden" : "");
+
+      const number = document.createElement("span");
+      number.className = "admin-row__index";
+      number.setAttribute("aria-hidden", "true");
+      number.textContent = String(index + 1).padStart(2, "0");
+
+      const body = document.createElement("div");
+      body.className = "admin-row__body";
+
+      const displayName = String(user.display_name || "").trim();
+      const title = document.createElement("p");
+      title.className = "admin-row__title";
+      title.textContent = displayName || user.email || "No email";
+      body.appendChild(title);
+
+      const meta = document.createElement("p");
+      meta.className = "admin-row__meta";
+
+      const email = document.createElement("span");
+      email.className = "admin-user__email";
+      email.textContent = user.email || "No email";
+      meta.appendChild(email);
+
+      const joined = document.createElement("span");
+      joined.textContent = "Joined " + formatDay(user.created_at);
+      meta.appendChild(joined);
+
+      if (adminIds.indexOf(user.id) !== -1) meta.appendChild(userTag("Admin", "admin"));
+      if (user.is_suspended) meta.appendChild(userTag("Suspended", "suspended"));
+      if (user.id === currentUserId) meta.appendChild(userTag("You", "hidden"));
+      body.appendChild(meta);
+
+      const actions = document.createElement("div");
+      actions.className = "admin-row__actions";
+
+      if (user.id !== currentUserId) {
+        const toggle = actionButton(user.is_suspended ? "Restore access" : "Suspend account");
+        toggle.textContent = user.is_suspended ? "Restore" : "Suspend";
+        toggle.addEventListener("click", function () {
+          setUserSuspended(user, !user.is_suspended);
+        });
+        actions.appendChild(toggle);
+      }
+
+      row.appendChild(number);
+      row.appendChild(body);
+      row.appendChild(actions);
+      usersListEl.appendChild(row);
+    });
+  }
+
+  async function loadUsers() {
+    const responses = await Promise.all([
+      client
+        .from("profiles")
+        .select("id,email,display_name,created_at,is_suspended")
+        .order("created_at", { ascending: false }),
+      client.from("admins").select("user_id")
+    ]);
+    const profileResponse = responses[0];
+    const adminResponse = responses[1];
+
+    if (profileResponse.error) {
+      usersLoaded = false;
+      setStatus("Could not load users: " + profileResponse.error.message, "error");
+      return false;
+    }
+
+    users = Array.isArray(profileResponse.data) ? profileResponse.data : [];
+    adminIds = adminResponse.error
+      ? []
+      : (adminResponse.data || []).map(function (row) {
+        return row.user_id;
+      });
+    usersLoaded = true;
+    renderUsers();
+    return true;
+  }
+
+  function setUserSuspended(user, suspended) {
+    if (busy || !client) return;
+    const who = String(user.display_name || "").trim() || user.email || "this account";
+    const question = suspended
+      ? "Suspend " + who + "? They will not be able to sign in or edit their profile until you restore access."
+      : "Restore access for " + who + "?";
+    if (!window.confirm(question)) return;
+
+    busy = true;
+    client
+      .rpc("admin_set_user_suspended", { target: user.id, suspended: suspended })
+      .then(function (response) {
+        if (response.error) throw new Error(response.error.message);
+        setStatus(suspended ? "Account suspended." : "Account restored.");
+        return loadUsers();
+      })
+      .catch(function (error) {
+        setStatus(error.message || "That change did not save. Please try again.", "error");
+      })
+      .finally(function () {
+        busy = false;
+      });
   }
 
   async function loadRadio() {
@@ -1604,13 +1741,14 @@
       button.setAttribute("aria-selected", active ? "true" : "false");
       button.tabIndex = active ? 0 : -1;
     });
-    if (countSummaryEl) countSummaryEl.hidden = name === "radio";
+    if (countSummaryEl) countSummaryEl.hidden = name === "radio" || name === "users";
     paintCounts();
     if (!client) return;
     if (name === "songs" && !songsLoaded) loadSongs();
     if (name === "photos" && !photosLoaded) loadPhotos();
     if (name === "videos" && !videosLoaded) loadVideos();
     if (name === "radio" && !radioLoaded) loadRadio();
+    if (name === "users" && !usersLoaded) loadUsers();
   }
 
   tabButtons.forEach(function (button) {
@@ -1754,6 +1892,20 @@
     });
   }
 
+  if (usersRefresh) {
+    usersRefresh.addEventListener("click", async function () {
+      if (busy || !client) return;
+      busy = true;
+      usersRefresh.disabled = true;
+      try {
+        if (await loadUsers()) setStatus("User list refreshed.");
+      } finally {
+        busy = false;
+        usersRefresh.disabled = false;
+      }
+    });
+  }
+
   /* ---------- Auth ---------- */
   async function enter(session) {
     if (entering || !session) return;
@@ -1771,6 +1923,7 @@
         setLoginError("This account is not on the admin list. Add it in Supabase and try again.");
         return;
       }
+      currentUserId = session.user.id;
       showDashboard(session);
       await loadClips();
     } finally {

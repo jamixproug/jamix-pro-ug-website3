@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create an account — JAMIX PRO UG</title>
+  <meta name="description" content="Create a free JAMIX PRO UG account to keep a private profile, display name and profile picture.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#060d1c">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="register" data-auth-page="register" id="top">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header auth-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="JAMIX PRO UG — home">
+        <img class="brand-mark" src="assets/icons/logo-mark.svg" alt="" width="44" height="44">
+        <span class="brand-text">
+          <span class="brand-name">JAMIX <span>PRO UG</span></span>
+          <span class="brand-sub">Music · DJ · Lifestyle</span>
+        </span>
+      </a>
+      <div class="header-actions">
+        <a class="btn btn-ghost btn-sm" href="index.html">Back to site</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="auth-section" aria-labelledby="auth-title">
+      <div class="container auth-layout">
+        <div class="auth-intro">
+          <p class="eyebrow">Join JAMIX PRO UG</p>
+          <h1 class="auth-title" id="auth-title">Create your <span class="serif">account.</span></h1>
+          <p class="auth-lede">
+            A JAMIX PRO UG account gives you a private profile with your display name and picture.
+            We ask for an email and a password — nothing else.
+          </p>
+          <ul class="auth-points">
+            <li>Confirm your email once, then sign in from any device.</li>
+            <li>Your profile is private to you and the site admin.</li>
+            <li>You can change your display name, picture and password later.</li>
+          </ul>
+        </div>
+
+        <div class="auth-card">
+          <p class="eyebrow">New account</p>
+          <h2>Register</h2>
+          <p class="auth-sub">Use an email address you can open — the confirmation link goes there.</p>
+
+          <form class="auth-form" data-register-form novalidate>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" inputmode="email" required placeholder="you@example.com">
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+              <p class="auth-hint">At least 8 characters. A short phrase works well.</p>
+            </label>
+            <label class="auth-field">
+              <span>Confirm password</span>
+              <input type="password" name="confirm" autocomplete="new-password" minlength="8" required>
+            </label>
+            <p class="auth-error" data-register-error role="alert"></p>
+            <button class="btn btn-gold" type="submit" data-register-submit>Create account</button>
+          </form>
+
+          <div class="auth-note auth-note--success" data-register-done hidden>
+            <strong>Check your inbox</strong>
+            <span>We sent a confirmation link to <span data-register-email></span>. Open it to activate your account, then sign in.</span>
+            <span>The email can take a minute. Check spam if it does not arrive.</span>
+            <button class="btn btn-ghost btn-sm" type="button" data-resend>Resend confirmation email</button>
+            <span class="auth-hint" data-resend-status role="status"></span>
+            <a class="auth-alt" href="login.html">Back to sign in</a>
+          </div>
+
+          <p class="auth-alt">Already registered? <a href="login.html">Sign in</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="auth-footer">
+    <div class="container auth-footer__inner">
+      <p>© <span data-year>2026</span> JAMIX PRO UG. All rights reserved.</p>
+      <div class="auth-footer__links">
+        <a href="index.html">Home</a>
+        <a href="radio.html">Radio</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" defer></script>
+  <script src="js/supabase.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/auth-pages.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>

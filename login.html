@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in — JAMIX PRO UG Account</title>
+  <meta name="description" content="Sign in to your JAMIX PRO UG account to manage your display name, profile picture and password.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#060d1c">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="login" data-auth-page="login" id="top">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header auth-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="JAMIX PRO UG — home">
+        <img class="brand-mark" src="assets/icons/logo-mark.svg" alt="" width="44" height="44">
+        <span class="brand-text">
+          <span class="brand-name">JAMIX <span>PRO UG</span></span>
+          <span class="brand-sub">Music · DJ · Lifestyle</span>
+        </span>
+      </a>
+      <div class="header-actions">
+        <a class="btn btn-ghost btn-sm" href="index.html">Back to site</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="auth-section" aria-labelledby="auth-title">
+      <div class="container auth-layout">
+        <div class="auth-intro">
+          <p class="eyebrow">Your account</p>
+          <h1 class="auth-title" id="auth-title">Sign in, <span class="serif">pick up where you left off.</span></h1>
+          <p class="auth-lede">
+            Your JAMIX PRO UG account keeps your display name and profile picture in one place.
+            Account details are private — only you and the site admin can see them.
+          </p>
+          <ul class="auth-points">
+            <li>A profile only you and the site admin can read.</li>
+            <li>Change your display name and picture whenever you like.</li>
+            <li>Reset your password by email if you ever forget it.</li>
+          </ul>
+        </div>
+
+        <div class="auth-card">
+          <p class="eyebrow">Welcome back</p>
+          <h2>Sign in</h2>
+          <p class="auth-sub">Use the email and password you registered with.</p>
+
+          <p class="auth-note auth-note--success" data-login-note role="status" hidden></p>
+
+          <form class="auth-form" data-login-form novalidate>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" inputmode="email" required placeholder="you@example.com">
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <p class="auth-error" data-login-error role="alert"></p>
+            <button class="btn btn-gold" type="submit" data-login-submit>Sign in</button>
+          </form>
+
+          <div class="auth-links">
+            <a href="forgot-password.html">Forgot your password?</a>
+          </div>
+
+          <p class="auth-alt">New to JAMIX PRO UG? <a href="register.html">Create an account</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="auth-footer">
+    <div class="container auth-footer__inner">
+      <p>© <span data-year>2026</span> JAMIX PRO UG. All rights reserved.</p>
+      <div class="auth-footer__links">
+        <a href="index.html">Home</a>
+        <a href="radio.html">Radio</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" defer></script>
+  <script src="js/supabase.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/auth-pages.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
