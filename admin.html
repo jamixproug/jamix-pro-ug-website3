@@ -120,6 +120,7 @@
         <button class="admin-tab" id="tab-songs" type="button" role="tab" data-tab="songs" aria-selected="false" aria-controls="panel-songs" tabindex="-1">Songs</button>
         <button class="admin-tab" id="tab-photos" type="button" role="tab" data-tab="photos" aria-selected="false" aria-controls="panel-photos" tabindex="-1">Photos</button>
         <button class="admin-tab" id="tab-videos" type="button" role="tab" data-tab="videos" aria-selected="false" aria-controls="panel-videos" tabindex="-1">Videos</button>
+        <button class="admin-tab" id="tab-radio" type="button" role="tab" data-tab="radio" aria-selected="false" aria-controls="panel-radio" tabindex="-1">Radio</button>
       </div>
 
       <div class="admin-grid" id="panel-drops" data-panel="drops" role="tabpanel" aria-labelledby="tab-drops">
@@ -261,12 +262,85 @@
         </section>
       </div>
 
+      <div class="admin-grid" id="panel-radio" data-panel="radio" role="tabpanel" aria-labelledby="tab-radio" hidden>
+        <section class="admin-card" aria-labelledby="radio-form-title">
+          <h2 id="radio-form-title">Station settings</h2>
+          <p class="admin-hint">These details power the public Live Radio page. Changes appear within a minute.</p>
+          <form class="admin-form" data-radio-form>
+            <label class="admin-field">
+              <span>Station name</span>
+              <input name="station_name" maxlength="80" required placeholder="JAMIX PRO UG Radio">
+            </label>
+            <label class="admin-field">
+              <span>Tagline (optional)</span>
+              <input name="tagline" maxlength="160" placeholder="Music · DJ · Lifestyle">
+            </label>
+            <label class="admin-field">
+              <span>Stream URL</span>
+              <input name="stream_url" type="url" maxlength="500" placeholder="https://stream.example.com/live.mp3">
+            </label>
+            <p class="admin-hint">
+              Paste the direct stream link (MP3 or AAC). HLS links ending in <code>.m3u8</code> do not play
+              in every browser.
+            </p>
+            <label class="admin-field">
+              <span>Now playing (optional)</span>
+              <input name="now_playing" maxlength="120" placeholder="e.g. Afrobeats warm-up — DJ JAMIX DJAY">
+            </label>
+            <label class="admin-field">
+              <span>Logo (optional)</span>
+              <input name="logo" type="file" accept="image/jpeg,image/png,image/webp">
+            </label>
+            <p class="admin-hint">
+              A square image works best; the brand mark is used when none is set. JPG, PNG or WebP up to 8 MB.
+            </p>
+            <label class="admin-check">
+              <input name="is_live" type="checkbox">
+              <span>Show the station as on air</span>
+            </label>
+            <p class="admin-hint">
+              Turn this off when nothing is streaming. The public page then shows “Off air” and disables play.
+            </p>
+            <button class="btn btn-gold admin-submit" type="submit" data-radio-save>Save station</button>
+            <progress class="admin-progress" data-radio-progress max="100" value="0" hidden></progress>
+          </form>
+        </section>
+
+        <section class="admin-card" aria-labelledby="radio-preview-title">
+          <div class="admin-card__head">
+            <h2 id="radio-preview-title">Current station</h2>
+            <button class="btn btn-ghost btn-sm admin-btn-light" type="button" data-radio-refresh>Refresh</button>
+          </div>
+          <p class="admin-empty" data-radio-empty hidden>No station settings yet. Save the form once.</p>
+          <div class="admin-radio" data-radio-preview hidden>
+            <div class="admin-radio__head">
+              <img class="admin-radio__logo" data-radio-logo src="assets/icons/logo-mark.svg" alt="" width="56" height="56">
+              <div>
+                <span class="admin-tag admin-tag--hidden" data-radio-state>Off air</span>
+                <p class="admin-radio__name" data-radio-name></p>
+                <p class="admin-radio__meta" data-radio-tagline></p>
+              </div>
+            </div>
+            <dl class="admin-radio__facts">
+              <div><dt>Now playing</dt><dd data-radio-now>—</dd></div>
+              <div><dt>Stream URL</dt><dd data-radio-url>—</dd></div>
+              <div><dt>Updated</dt><dd data-radio-updated>—</dd></div>
+            </dl>
+          </div>
+          <p class="admin-hint admin-hint--foot">
+            <a class="link-arrow" href="radio.html">Open the public radio page</a>
+          </p>
+        </section>
+      </div>
+
       <p class="admin-preview">
         <a class="link-arrow" href="index.html#music">Open the public player</a>
         <span class="admin-count__sep">·</span>
         <a class="link-arrow" href="portfolio.html">Open the public gallery</a>
         <span class="admin-count__sep">·</span>
         <a class="link-arrow" href="index.html#videos">Open the public videos</a>
+        <span class="admin-count__sep">·</span>
+        <a class="link-arrow" href="radio.html">Open the live radio</a>
       </p>
     </section>
   </main>

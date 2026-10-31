@@ -51,6 +51,13 @@
   const videoSubmit = $("[data-video-submit]");
   const videoProgress = $("[data-video-progress]");
   const videoRefresh = $("[data-video-refresh]");
+  const countSummaryEl = $(".admin-count");
+  const radioForm = $("[data-radio-form]");
+  const radioSave = $("[data-radio-save]");
+  const radioProgress = $("[data-radio-progress]");
+  const radioRefresh = $("[data-radio-refresh]");
+  const radioPreview = $("[data-radio-preview]");
+  const radioEmpty = $("[data-radio-empty]");
 
   const AUDIO_MAX = 25 * 1024 * 1024;
   const IMAGE_MAX = 8 * 1024 * 1024;
@@ -66,6 +73,8 @@
   let songsLoaded = false;
   let photosLoaded = false;
   let videosLoaded = false;
+  let radioSettings = null;
+  let radioLoaded = false;
   let activePanel = "drops";
   let busy = false;
   let entering = false;
@@ -176,6 +185,7 @@
 
   /* ---------- Rendering ---------- */
   function paintCounts() {
+    if (activePanel === "radio") return;
     const list =
       activePanel === "songs" ? songs
         : activePanel === "photos" ? photos
@@ -822,6 +832,199 @@
     return true;
   }
 
+  function formatWhen(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function paintRadioForm() {
+    if (!radioForm) return;
+    const row = radioSettings || {};
+    const fields = radioForm.elements;
+    fields.station_name.value = row.station_name || "JAMIX PRO UG Radio";
+    fields.tagline.value = row.tagline || "";
+    fields.stream_url.value = row.stream_url || "";
+    fields.now_playing.value = row.now_playing || "";
+    fields.is_live.checked = row.is_live === true;
+    if (fields.logo) fields.logo.value = "";
+  }
+
+  function renderRadio() {
+    if (!radioPreview) return;
+    const row = radioSettings;
+    if (radioEmpty) radioEmpty.hidden = !!row;
+    radioPreview.hidden = !row;
+    if (!row) return;
+
+    const isOn = row.is_live === true && !!String(row.stream_url || "").trim();
+    const state = $("[data-radio-state]", radioPreview);
+    const logo = $("[data-radio-logo]", radioPreview);
+    const name = $("[data-radio-name]", radioPreview);
+    const tagline = $("[data-radio-tagline]", radioPreview);
+    const now = $("[data-radio-now]", radioPreview);
+    const url = $("[data-radio-url]", radioPreview);
+    const updated = $("[data-radio-updated]", radioPreview);
+
+    if (state) {
+      state.textContent = isOn ? "On air" : "Off air";
+      state.className = "admin-tag " + (isOn ? "admin-tag--live" : "admin-tag--hidden");
+    }
+    if (logo) logo.src = row.logo_path || "assets/icons/logo-mark.svg";
+    if (name) name.textContent = row.station_name || "JAMIX PRO UG Radio";
+    if (tagline) tagline.textContent = row.tagline || "No tagline set.";
+    if (now) now.textContent = row.now_playing || "Not announced yet";
+    if (url) {
+      url.textContent = row.stream_url || "No stream URL yet";
+      url.title = row.stream_url || "";
+    }
+    if (updated) updated.textContent = formatWhen(row.updated_at) || "—";
+  }
+
+  async function loadRadio() {
+    const response = await client
+      .from("radio_settings")
+      .select("id,station_name,tagline,stream_url,now_playing,logo_path,is_live,updated_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (response.error) {
+      radioLoaded = false;
+      setStatus("Could not load radio settings: " + response.error.message, "error");
+      return false;
+    }
+
+    radioSettings = response.data || null;
+    radioLoaded = true;
+    paintRadioForm();
+    renderRadio();
+    return true;
+  }
+
+  if (radioForm) {
+    radioForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (busy || !client) return;
+
+      const fields = radioForm.elements;
+      const stationName = fields.station_name.value.trim();
+      const tagline = fields.tagline.value.trim();
+      const streamUrl = fields.stream_url.value.trim();
+      const nowPlaying = fields.now_playing.value.trim();
+      const isLive = fields.is_live.checked;
+      const logoInput = fields.logo;
+      const logoFile = logoInput && logoInput.files ? logoInput.files[0] : null;
+
+      if (!stationName) {
+        setStatus("Give the station a name first.", "error");
+        fields.station_name.focus();
+        return;
+      }
+      if (streamUrl) {
+        let parsed = null;
+        try {
+          parsed = new URL(streamUrl);
+        } catch (error) {
+          parsed = null;
+        }
+        if (!parsed || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+          setStatus("The stream URL must start with http:// or https://.", "error");
+          fields.stream_url.focus();
+          return;
+        }
+      }
+      if (isLive && !streamUrl) {
+        setStatus("Add a stream URL before switching the station on air.", "error");
+        fields.stream_url.focus();
+        return;
+      }
+      if (logoFile) {
+        if (!isImageFile(logoFile)) {
+          setStatus("That is not a supported logo. Use JPG, PNG or WebP.", "error");
+          return;
+        }
+        if (logoFile.size > IMAGE_MAX) {
+          setStatus("That logo is larger than 8 MB. Compress it and try again.", "error");
+          return;
+        }
+      }
+
+      busy = true;
+      radioForm.setAttribute("aria-busy", "true");
+      if (radioSave) {
+        radioSave.disabled = true;
+        radioSave.textContent = "Saving…";
+      }
+      if (logoFile) paintUploadProgress(radioProgress, 0);
+
+      const previousLogo = radioSettings ? radioSettings.logo_path : "";
+      let uploadedPath = "";
+
+      try {
+        let logoUrl = previousLogo || null;
+        if (logoFile) {
+          uploadedPath =
+            "radio/" + Date.now() + "-" + slugify(stationName) + "." + imageExtension(logoFile);
+          await uploadObject("photos", uploadedPath, logoFile, imageContentType(logoFile), function (ratio) {
+            paintUploadProgress(radioProgress, ratio * 100);
+            if (radioSave) {
+              radioSave.textContent = "Uploading " + (radioProgress ? radioProgress.value : 0) + "%…";
+            }
+          });
+          logoUrl = storagePublicUrl("photos", uploadedPath);
+          if (!logoUrl) throw new Error("Could not read the uploaded logo URL.");
+        }
+
+        const values = {
+          station_name: stationName,
+          tagline: tagline || null,
+          stream_url: streamUrl || null,
+          now_playing: nowPlaying || null,
+          logo_path: logoUrl,
+          is_live: isLive
+        };
+
+        let response = await client.from("radio_settings").update(values).eq("id", 1).select("id");
+        if (response.error) throw new Error(response.error.message);
+
+        if (!response.data || !response.data.length) {
+          const inserted = await client
+            .from("radio_settings")
+            .insert(Object.assign({ id: 1 }, values));
+          if (inserted.error) throw new Error(inserted.error.message);
+        }
+
+        if (uploadedPath && previousLogo && previousLogo !== logoUrl) {
+          await removeStored("photos", previousLogo);
+        }
+
+        await loadRadio();
+        setStatus("Station settings saved.");
+      } catch (error) {
+        if (uploadedPath) await client.storage.from("photos").remove([uploadedPath]);
+        setStatus(error.message || "Could not save the station settings.", "error");
+      } finally {
+        busy = false;
+        radioForm.removeAttribute("aria-busy");
+        if (radioSave) {
+          radioSave.disabled = false;
+          radioSave.textContent = "Save station";
+        }
+        if (radioProgress) {
+          radioProgress.hidden = true;
+          radioProgress.value = 0;
+        }
+      }
+    });
+  }
+
   function startSongEdit(song, row) {
     const body = row.querySelector(".admin-row__body");
     if (!body || body.querySelector(".admin-rename")) return;
@@ -1401,11 +1604,13 @@
       button.setAttribute("aria-selected", active ? "true" : "false");
       button.tabIndex = active ? 0 : -1;
     });
+    if (countSummaryEl) countSummaryEl.hidden = name === "radio";
     paintCounts();
     if (!client) return;
     if (name === "songs" && !songsLoaded) loadSongs();
     if (name === "photos" && !photosLoaded) loadPhotos();
     if (name === "videos" && !videosLoaded) loadVideos();
+    if (name === "radio" && !radioLoaded) loadRadio();
   }
 
   tabButtons.forEach(function (button) {
@@ -1531,6 +1736,20 @@
       } finally {
         busy = false;
         videoRefresh.disabled = false;
+      }
+    });
+  }
+
+  if (radioRefresh) {
+    radioRefresh.addEventListener("click", async function () {
+      if (busy || !client) return;
+      busy = true;
+      radioRefresh.disabled = true;
+      try {
+        if (await loadRadio()) setStatus("Radio settings refreshed.");
+      } finally {
+        busy = false;
+        radioRefresh.disabled = false;
       }
     });
   }

@@ -14,6 +14,7 @@ Built with plain HTML, CSS and vanilla JavaScript. No frameworks and no build st
 | About | `about.html` | Story, mission, vision, core values and brand statement |
 | Services | `services.html` | DJ performance, karaoke nights, event hosting, brand collaborations, process and pricing/quote policy |
 | Portfolio | `portfolio.html` | Filterable gallery with keyboard-accessible image previews |
+| Live Radio | `radio.html` | Station details, now playing, live stream player with play/pause and volume |
 | Blog | `blog.html` | Searchable, category-filtered article listing |
 | Article | `article.html` | Single article template driven by `assets/data/posts.js` (`article.html?post=slug`) |
 | Contact | `contact.html` | WhatsApp, email, location, social links and an enquiry form with validation |
@@ -24,12 +25,13 @@ Supporting files:
 
 - `style.css` — full design system, layout, components, responsive rules and reduced-motion support.
 - `admin.css` — admin-only layout, built on the same tokens.
-- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player, uploaded-video player, uploaded-photo gallery, form validation and Formspree submission.
-- `admin.js` — Supabase sign-in and drops, songs, photos and videos management for `admin.html`.
+- `script.js` — navigation, scroll reveals, portfolio filters, lightbox, blog search/filter, article rendering, drops player, uploaded-song player, uploaded-video player, live radio player, uploaded-photo gallery, form validation and Formspree submission.
+- `admin.js` — Supabase sign-in and drops, songs, photos, videos and radio settings management for `admin.html`.
 - `assets/data/posts.js` — all article content in one editable file.
 - `js/supabase.js` — Supabase project URL and publishable key (older projects call it the anon key).
 - `supabase/schema.sql` — tables, security rules, storage buckets and seed data for a fresh install.
 - `supabase/videos.sql` — the standalone videos migration for a project that already has `schema.sql` installed.
+- `supabase/radio.sql` — the standalone live radio migration for a project that already has `schema.sql` installed.
 - `assets/audio/` — the 11 drops clips served by the player.
 - `assets/images/` — optimized JPG/WebP photography and brand artwork.
 - `assets/icons/` — logo mark, favicon and app icons.
@@ -72,6 +74,7 @@ jamix-pro-ug-website/
 ├── about.html
 ├── services.html
 ├── portfolio.html
+├── radio.html
 ├── blog.html
 ├── article.html
 ├── contact.html
@@ -90,7 +93,8 @@ jamix-pro-ug-website/
 │   └── supabase.js
 ├── supabase/
 │   ├── schema.sql
-│   └── videos.sql
+│   ├── videos.sql
+│   └── radio.sql
 └── assets/
     ├── audio/            (11 MP3 clips)
     ├── data/
@@ -159,12 +163,13 @@ The endpoint URL is not a secret, but API keys are. Never place private keys, pa
 
 ## 5. Media admin (Supabase)
 
-`admin.html` is a private dashboard for the site's media, split into four tabs:
+`admin.html` is a private dashboard for the site's media and live radio, split into five tabs:
 
 - **Drops** — the home-page **Drops & IDs** playlist: add a clip (uploading the MP3), rename, reorder, hide and delete.
 - **Songs** — full tracks with title, artist, optional cover image and a public player in the home listening section.
 - **Photos** — gallery images that appear in the portfolio grid under an **Uploads** filter.
 - **Videos** — uploaded MP4/WebM clips with title, description and optional thumbnail, published in the home **Videos** section.
+- **Radio** — the station name, tagline, stream URL, now playing text, logo and an on-air switch for `radio.html`.
 
 Changes appear on the public site within a minute — no code edit or redeploy.
 
@@ -174,25 +179,26 @@ The page is deliberately not linked in the navigation. It is `noindex, nofollow`
 
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
 2. Go to **Authentication → Users → Add user**. Use `jamixproug@gmail.com` with a strong password, and confirm the user. Do this before the next step: the schema allowlists the account by looking it up.
-3. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops`, `songs`, `photos` and `videos` tables, the `admins` allowlist, the security policies, four public storage buckets (`drops`, `songs`, `photos`, `videos`), the 11 existing clips and your admin row.
+3. Open **SQL Editor**, paste all of `supabase/schema.sql` and click **Run**. This creates the `drops`, `songs`, `photos`, `videos` and `radio_settings` tables, the `admins` allowlist, the security policies, four public storage buckets (`drops`, `songs`, `photos`, `videos`), the 11 existing clips and your admin row.
 4. Go to **Project Settings → API Keys** and copy the **Project URL** and the **publishable** key (older projects label it **anon public**) into `js/supabase.js`. This repository is already configured for the live project.
 5. Commit and push. Render redeploys and `/admin.html` switches from the setup checklist to the sign-in form.
 
-If the schema was run before the user existed, simply run it again — it is idempotent and will add the missing `admins` row. Run it again after pulling this update as well: it adds the `videos` table and bucket without touching drops, songs or photos. If you prefer not to re-run the whole file, run `supabase/videos.sql` instead; it applies only the videos changes.
+If the schema was run before the user existed, simply run it again — it is idempotent and will add the missing `admins` row. Run it again after pulling this update as well: it adds the `videos` table, the `radio_settings` table and their buckets without touching existing media. If you prefer not to re-run the whole file, run `supabase/videos.sql` and/or `supabase/radio.sql` instead; each applies only its own changes.
 
 Leave the URL blank to go back to the previous behaviour: the player uses its built-in 11 clips and `admin.html` shows the setup checklist.
 
 ### Using the dashboard
 
-- Sign in at `https://<your-site>/admin.html`, then choose the **Drops**, **Songs**, **Photos** or **Videos** tab.
+- Sign in at `https://<your-site>/admin.html`, then choose the **Drops**, **Songs**, **Photos**, **Videos** or **Radio** tab.
 - **Drops → Add a clip** uploads an MP3 to the `drops` bucket and publishes it at the end of the playlist. MP3 only, 10 MB maximum — clips of 5–15 seconds work best.
 - The arrow buttons change the order, **Rename** edits the title inline, **Hide** removes a clip from the player without deleting it.
 - **Songs → Add a song** uploads audio to the `songs` bucket (MP3 up to 25 MB) and an optional cover to `photos`. The home player shows the cover, title, artist and play/pause controls.
 - **Photos → Add a photo** uploads an image to the `photos` bucket (JPG, PNG or WebP up to 8 MB) and adds it to the portfolio gallery.
 - **Videos → Add a video** uploads an MP4 or WebM file to the `videos` bucket (up to 50 MB) and an optional thumbnail to `photos`. The home **Videos** section shows cards with the thumbnail, title and description, and plays the selected clip in an HTML5 player.
-- Song, photo and video uploads show a live progress bar. Each row has **Edit**; videos also have **Publish/Unpublish**.
+- **Radio → Station settings** edits the name, tagline, direct stream URL, now playing line and logo, and switches the station **on air**. The public `radio.html` page reads the same row. Turning off-air disables play and shows “Off air”.
+- Song, photo, video and radio-logo uploads show a live progress bar. Each row has **Edit**; videos also have **Publish/Unpublish**.
 - **Delete** removes the row and the uploaded files. Clips that came from `assets/audio/` keep their file in the repository; only the database row is removed.
-- The public players and gallery read published rows from Supabase. If the database is unreachable the drops player silently falls back to the hard-coded list, and the songs and uploads sections stay hidden, so visitors never see an empty section. The videos section explains that videos could not load instead of showing a broken player.
+- The public players and gallery read published rows from Supabase. If the database is unreachable the drops player silently falls back to the hard-coded list, and the songs and uploads sections stay hidden, so visitors never see an empty section. The videos section explains that videos could not load instead of showing a broken player. The radio page likewise shows a clear message and keeps play disabled when the station details cannot be loaded.
 
 ### Security notes
 
@@ -209,6 +215,9 @@ Leave the URL blank to go back to the previous behaviour: the player uses its bu
 | "This account is not on the admin list" | The user exists but has no `admins` row — usually the schema ran before the user was created. Re-run `schema.sql` |
 | Upload fails with a policy error | `schema.sql` was not run in full, or the storage policies were skipped |
 | Songs, Photos or Videos tab says the table is missing | The older schema is still installed — run `supabase/videos.sql` for videos, or re-run `schema.sql` to add every table and bucket |
+| Radio tab says the table is missing | `supabase/radio.sql` has not been run. Run it (or re-run `schema.sql`) — it only adds `radio_settings` |
+| Radio page says the station is off air | In the **Radio** tab, add a stream URL and tick **Show the station as on air**, then save |
+| Radio play button stays disabled | No stream URL is published, the station is off air, or the station details could not load. Check the status line under the controls |
 | Player shows the old 11 clips | Supabase unreachable, no published rows, or the key is wrong — check the browser console |
 | Uploaded song has no cover or will not play | The cover is optional; playback needs an MP3 in the `songs` bucket and a published row. Check the console for the failing URL |
 | Video upload is rejected as too large | The limit is 50 MB, matching the Supabase Free plan. Compress the clip or shorten it; the bucket and the dashboard enforce the same limit |
@@ -258,6 +267,7 @@ The `#music` section explains how a JAMIX PRO UG set is built and points visitor
 - The copy is adapted from the article “How a JAMIX PRO UG set is built” in `assets/data/posts.js`; keep the two consistent if you edit one.
 - The **Songs** panel is hidden until at least one published song exists. It lists cover, title and artist, and uses a single audio element with play/pause — one song plays at a time and nothing autoplays.
 - The **Videos** section links from the main navigation as `index.html#videos`. It shows published videos as responsive cards with thumbnail, title and description; choosing one reveals an HTML5 `<video>` player and starts only that clip. The section shows a loading message, a friendly empty message when nothing is published, and an error message if Supabase cannot be reached. Video playback pauses any active drops or song audio, and starting audio pauses the video.
+- The **Live Radio** page (`radio.html`) is the only place the station stream plays. It shows the station name, tagline, logo and now playing line from Supabase, plus play/pause, a volume slider and a mute button. Nothing starts automatically; the stream URL is only requested after a visitor presses play. The page reports “Off air” when the station is switched off in the dashboard, and explains when the stream is offline or slow instead of spinning forever. The station row is refreshed quietly every minute while the tab is visible.
 
 The playlist is normally managed from `/admin.html` — see section 5. The table below documents the 11 clips that shipped with the site and are used as the database seed and as the no-JavaScript fallback.
 
@@ -344,6 +354,7 @@ This build deliberately avoids inventing facts. Before publishing, review these 
 - **The carved-wood portrait** is labelled as creative artwork, not a client project.
 - **Portfolio images** are brand and promotional material, not case studies. The page says so.
 - **Audio and video are limited to what the owner uploads.** The site hosts the 11 short drops, any songs added through the dashboard, and any videos published through the Videos tab. The listening section links to the official channels for full mixes and other content.
+- **The live radio stream is not hosted on this site.** The Radio tab stores whatever stream URL the owner enters; the player plays that URL directly. The station name, tagline and now playing line are display text typed by the owner — the player does not read track metadata from the stream, so keep them updated manually.
 - **Social handles** need verification (see above).
 - **The contact form** delivers through Formspree to `jamixproug@gmail.com`. Confirm that inbox is monitored, that Formspree notifications are not caught by spam filters, and that the free-plan quota suits the site's traffic.
 - **The email address and WhatsApp number** should be confirmed as the official booking channels.
@@ -422,7 +433,7 @@ Run through these before and after publishing:
 - [ ] Keyboard focus is visible throughout, including on the cream form card.
 - [ ] `/admin.html` shows the setup checklist while Supabase is unconfigured, and the sign-in form once it is.
 - [ ] Signing in with an allowlisted account lists the clips; an account without an `admins` row is refused and signed out.
-- [ ] The Drops, Songs, Photos and Videos tabs switch cleanly and keep the layout intact on a phone.
+- [ ] The Drops, Songs, Photos, Videos and Radio tabs switch cleanly and keep the layout intact on a phone.
 - [ ] Adding, renaming, hiding, reordering and deleting a clip all survive a page reload and show on the home player.
 - [ ] Uploading a song shows progress, then the song appears in the home player with cover, title, artist and working play/pause.
 - [ ] Uploading a photo shows progress, then the photo appears in the portfolio under **Uploads** and opens in the lightbox.
@@ -431,6 +442,11 @@ Run through these before and after publishing:
 - [ ] Deleting a song, photo or video removes the row and its uploaded files, and updates the public site after a refresh.
 - [ ] An oversized or wrong-type file is rejected with a clear message before upload.
 - [ ] The **Videos** link appears in the desktop navigation, mobile menu and footer on every page, and the section shows friendly loading, empty and error states.
+- [ ] Saving the **Radio** tab updates the name, tagline, now playing line and logo on `radio.html`.
+- [ ] Pressing play on `radio.html` starts the stream; pause, the volume slider and mute all work, and the status line says “Live now”.
+- [ ] With **Off air** ticked off, the public page shows “Off air” and play is disabled. An invalid stream URL is rejected in the dashboard.
+- [ ] The **Radio** link appears in the desktop navigation, mobile menu and footer on every page.
+- [ ] When the stream URL is unreachable, the page shows a clear offline message rather than loading forever.
 
 ---
 
@@ -443,7 +459,7 @@ Run through these before and after publishing:
 - **Accessibility.** Skip link, semantic landmarks, visible focus styles, labelled form fields, error messages announced via live regions, keyboard-operable filters and lightbox, `prefers-reduced-motion` support.
 - **No analytics or tracking** is installed. Add analytics only with the owner's consent and, where required, an appropriate cookie notice.
 - **No site backend of its own.** The static site stores nothing. A submitted enquiry is posted to Formspree and forwarded to the booking inbox; other contact happens only when a visitor chooses WhatsApp or email.
-- **Media data.** Drops, songs, photos and videos live in Supabase (Postgres); audio, images and videos added through the dashboard live in the `drops`, `songs`, `photos` and `videos` Storage buckets. Video thumbnails are stored in the `photos` bucket. All writes are gated by row-level security. Public pages only ever read published rows.
+- **Media data.** Drops, songs, photos and videos live in Supabase (Postgres); audio, images and videos added through the dashboard live in the `drops`, `songs`, `photos` and `videos` Storage buckets. Video thumbnails and the radio logo are stored in the `photos` bucket. The live radio settings live in the single-row `radio_settings` table. All writes are gated by row-level security. Public pages only ever read published rows and the public station row.
 - **Uploads without the SDK.** File uploads use `XMLHttpRequest` to the Storage REST endpoint so the dashboard can show real progress; reads, sign-in and row writes use the Supabase client. One shared client is created in `admin.js` from `js/supabase.js`.
 
 ---

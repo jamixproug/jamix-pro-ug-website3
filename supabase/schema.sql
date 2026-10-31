@@ -345,3 +345,57 @@ create policy "Admins delete video files"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'videos' and public.is_admin());
+
+-- ---------- 11. Live radio ----------
+-- One row holds the stream URL and station details the public
+-- radio page reads. No delete policy: the row is permanent.
+create table if not exists public.radio_settings (
+  id           integer primary key default 1 check (id = 1),
+  station_name text not null default 'JAMIX PRO UG Radio'
+               check (char_length(station_name) between 1 and 80),
+  tagline      text check (tagline is null or char_length(tagline) <= 160),
+  stream_url   text check (stream_url is null or char_length(stream_url) <= 500),
+  now_playing  text check (now_playing is null or char_length(now_playing) <= 120),
+  logo_path    text,
+  is_live      boolean not null default false,
+  updated_at   timestamptz not null default now()
+);
+
+insert into public.radio_settings (id) values (1)
+on conflict (id) do nothing;
+
+alter table public.radio_settings enable row level security;
+
+drop policy if exists "Radio settings are public" on public.radio_settings;
+create policy "Radio settings are public"
+  on public.radio_settings for select
+  using (true);
+
+drop policy if exists "Admins insert radio settings" on public.radio_settings;
+create policy "Admins insert radio settings"
+  on public.radio_settings for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins update radio settings" on public.radio_settings;
+create policy "Admins update radio settings"
+  on public.radio_settings for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create or replace function public.touch_radio_settings()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = pg_catalog.now();
+  return new;
+end;
+$$;
+
+drop trigger if exists radio_settings_touch on public.radio_settings;
+create trigger radio_settings_touch
+  before update on public.radio_settings
+  for each row execute function public.touch_radio_settings();

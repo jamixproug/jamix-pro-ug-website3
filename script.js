@@ -1632,6 +1632,289 @@
   }
 
   /* ----------------------------------------------------------
+     Live radio
+  ---------------------------------------------------------- */
+  const radioPanel = $("[data-radio]");
+
+  if (radioPanel) {
+    const audio = $("[data-radio-audio]", radioPanel);
+    const card = $(".radio-card", radioPanel);
+    const toggle = $("[data-radio-toggle]", radioPanel);
+    const mute = $("[data-radio-mute]", radioPanel);
+    const volume = $("[data-radio-volume]", radioPanel);
+    const volumeValue = $("[data-radio-volume-value]", radioPanel);
+    const nameEl = $("[data-radio-name]", radioPanel);
+    const taglineEl = $("[data-radio-tagline]", radioPanel);
+    const logoEl = $("[data-radio-logo]", radioPanel);
+    const nowEl = $("[data-radio-now]", radioPanel);
+    const airEl = $("[data-radio-air]", radioPanel);
+    const airText = $("[data-radio-air-text]", radioPanel);
+    const statusEl = $("[data-radio-status]", radioPanel);
+    const updatedEl = $("[data-radio-updated]");
+    const fallbackLogo = logoEl ? logoEl.getAttribute("src") : "";
+
+    let settings = null;
+    let connectTimer = 0;
+    let pollTimer = 0;
+    let listening = false;
+
+    const paintPlaying = (on) => {
+      if (card) card.classList.toggle("is-playing", !!on);
+    };
+
+    const setStatus = (message, tone) => {
+      if (!statusEl) return;
+      statusEl.textContent = message;
+      statusEl.classList.toggle("is-error", tone === "error");
+      statusEl.classList.toggle("is-live", tone === "live");
+    };
+
+    const paintVolume = () => {
+      if (!volumeValue || !volume) return;
+      const value = Number(volume.value) || 0;
+      volumeValue.textContent = value + "%";
+    };
+
+    const setVolumeValue = (value) => {
+      if (!volume) return;
+      volume.value = String(Math.round(Math.max(0, Math.min(100, value))));
+      paintVolume();
+    };
+
+    const disableControls = () => {
+      [toggle, mute, volume].forEach((control) => {
+        if (control) control.disabled = true;
+      });
+    };
+
+    const enableControls = () => {
+      [toggle, mute, volume].forEach((control) => {
+        if (control) control.disabled = false;
+      });
+    };
+
+    const paintAir = (isOn) => {
+      if (!airEl) return;
+      airEl.classList.toggle("is-live", !!isOn);
+      airEl.classList.toggle("is-off", !isOn);
+      if (airText) airText.textContent = isOn ? "On air" : "Off air";
+    };
+
+    const formatUpdated = (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return "Station details updated " + date.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    };
+
+    const paintSettings = () => {
+      const row = settings || {};
+      if (nameEl) nameEl.textContent = row.station_name || "JAMIX PRO UG Radio";
+      if (taglineEl) taglineEl.textContent = row.tagline || "Music · DJ · Lifestyle";
+      if (nowEl) nowEl.textContent = row.now_playing || "Not announced yet";
+      if (logoEl) logoEl.src = row.logo_path || fallbackLogo;
+      paintAir(row.is_live === true && !!row.stream_url);
+      if (updatedEl) {
+        const text = formatUpdated(row.updated_at);
+        updatedEl.textContent = text;
+        updatedEl.hidden = !text;
+      }
+    };
+
+    const pauseOtherAudio = () => {
+      ["#drops-audio", "[data-songs-audio]", "[data-videos-player]"].forEach((selector) => {
+        const element = document.querySelector(selector);
+        if (element && !element.paused) element.pause();
+      });
+    };
+
+    const clearConnectTimer = () => {
+      window.clearTimeout(connectTimer);
+      connectTimer = 0;
+    };
+
+    const startConnectTimer = () => {
+      clearConnectTimer();
+      connectTimer = window.setTimeout(() => {
+        if (!listening) {
+          setStatus("The stream is taking too long to respond. It may be offline — try again.", "error");
+        }
+      }, 20000);
+    };
+
+    const startStream = () => {
+      if (!audio || !settings) return;
+      const src = String(settings.stream_url || "").trim();
+      if (!/^https?:\/\//i.test(src)) {
+        setStatus("The station's stream URL is not valid. Update it in the admin dashboard.", "error");
+        return;
+      }
+      pauseOtherAudio();
+      if (audio.dataset.src !== src || audio.error) {
+        audio.dataset.src = src;
+        audio.src = src;
+        audio.load();
+      }
+      audio.volume = volume ? Number(volume.value) / 100 : 0.8;
+      if (mute) audio.muted = mute.getAttribute("aria-pressed") === "true";
+      setStatus("Connecting to the stream…");
+      startConnectTimer();
+      paintPlaying(true);
+      if (toggle) toggle.setAttribute("aria-label", "Pause the live stream");
+      const attempt = audio.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch((error) => {
+          if (error && error.name === "AbortError") return;
+          listening = false;
+          clearConnectTimer();
+          setStatus("The stream could not start. It may be offline — try again in a moment.", "error");
+          paintPlaying(false);
+          if (toggle) toggle.setAttribute("aria-label", "Play the live stream");
+        });
+      }
+    };
+
+    const loadSettings = async (quiet) => {
+      const config = window.JAMIX_SUPABASE || {};
+      const publicKey = config.key || config.anonKey || "";
+      if (!config.url || !publicKey) {
+        paintSettings();
+        disableControls();
+        setStatus("Radio is not connected yet. Add your station details in the admin dashboard.", "error");
+        return;
+      }
+      try {
+        const endpoint =
+          String(config.url).replace(/\/+$/, "") +
+          "/rest/v1/radio_settings?select=station_name,tagline,stream_url,now_playing,logo_path,is_live,updated_at&id=eq.1";
+        const response = await fetch(endpoint, {
+          headers: {
+            apikey: publicKey,
+            Authorization: "Bearer " + publicKey,
+            Accept: "application/json"
+          }
+        });
+        if (!response.ok) throw new Error("Radio request failed.");
+        const rows = await response.json();
+        settings = Array.isArray(rows) && rows.length ? rows[0] : null;
+        paintSettings();
+        if (!settings || !settings.stream_url) {
+          if (quiet && listening) return;
+          disableControls();
+          if (!quiet) setStatus("No stream URL is published yet. Check back soon.");
+          return;
+        }
+        if (!settings.is_live) {
+          if (quiet && listening) return;
+          disableControls();
+          if (!quiet) setStatus("The station is off air right now. Check back for the next live show.");
+          return;
+        }
+        enableControls();
+        if (!quiet && !listening && audio && audio.paused) {
+          setStatus("Ready when you are. Press play to join the live stream.");
+        }
+      } catch (error) {
+        if (quiet) return;
+        paintAir(false);
+        disableControls();
+        setStatus("The station details could not load. Check your connection and reload the page.", "error");
+      }
+    };
+
+    if (volume) {
+      volume.addEventListener("input", () => {
+        const value = Number(volume.value) / 100;
+        if (audio) {
+          audio.volume = value;
+          if (value > 0 && audio.muted) {
+            audio.muted = false;
+            if (mute) {
+              mute.setAttribute("aria-pressed", "false");
+              mute.setAttribute("aria-label", "Mute the stream");
+            }
+          }
+        }
+        paintVolume();
+      });
+      paintVolume();
+    }
+
+    if (mute && audio) {
+      mute.addEventListener("click", () => {
+        const next = mute.getAttribute("aria-pressed") !== "true";
+        audio.muted = next;
+        mute.setAttribute("aria-pressed", next ? "true" : "false");
+        mute.setAttribute("aria-label", next ? "Unmute the stream" : "Mute the stream");
+      });
+    }
+
+    if (toggle && audio) {
+      toggle.addEventListener("click", () => {
+        if (audio.paused) startStream();
+        else audio.pause();
+      });
+
+      audio.addEventListener("playing", () => {
+        listening = true;
+        clearConnectTimer();
+        paintPlaying(true);
+        toggle.setAttribute("aria-label", "Pause the live stream");
+        setStatus("Live now — you are listening.", "live");
+      });
+
+      audio.addEventListener("pause", () => {
+        listening = false;
+        clearConnectTimer();
+        paintPlaying(false);
+        toggle.setAttribute("aria-label", "Play the live stream");
+        if (audio.error) return;
+        if (statusEl && statusEl.classList.contains("is-error")) return;
+        setStatus("Paused. Press play to rejoin the live stream.");
+      });
+
+      audio.addEventListener("waiting", () => {
+        if (listening) {
+          setStatus("Buffering the stream…");
+          return;
+        }
+        setStatus("Connecting to the stream…");
+        startConnectTimer();
+      });
+
+      audio.addEventListener("error", () => {
+        listening = false;
+        clearConnectTimer();
+        paintPlaying(false);
+        toggle.setAttribute("aria-label", "Play the live stream");
+        setStatus("The stream is offline or unavailable right now. Please try again later.", "error");
+      });
+
+      audio.addEventListener("ended", () => {
+        listening = false;
+        paintPlaying(false);
+        toggle.setAttribute("aria-label", "Play the live stream");
+        setStatus("The stream ended. Press play to reconnect.", "error");
+      });
+    }
+
+    loadSettings(false);
+    pollTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadSettings(true);
+    }, 60000);
+    window.addEventListener("pagehide", () => {
+      window.clearInterval(pollTimer);
+      if (audio && !audio.paused) audio.pause();
+    });
+  }
+
+  /* ----------------------------------------------------------
      Small enhancement: external links open safely
   ---------------------------------------------------------- */
   $$('a[target="_blank"]').forEach((link) => {
